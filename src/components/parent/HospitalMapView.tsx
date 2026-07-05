@@ -3,8 +3,7 @@ import { Badge } from "@/components/ui";
 import {
   formatDistance,
   getHospitalsByCluster,
-  MOCK_USER_LOCATION,
-} from "@/data/mockHospitals";
+} from "@/lib/hospital-utils";
 import { cn } from "@/lib/cn";
 import { CLUSTER_LABELS, type MapCluster, type NearbyHospital } from "@/types/hospital";
 
@@ -13,6 +12,7 @@ interface HospitalMapViewProps {
   preferredHospitalId: string | null;
   selectedHospitalId: string | null;
   onSelectHospital: (hospitalId: string) => void;
+  locationLabel: string;
 }
 
 const GRID_ROWS = 5;
@@ -60,7 +60,7 @@ function MapMarker({
             ? "bg-accent text-canvas ring-accent-bright shadow-glow"
             : isSelected
               ? "bg-info text-canvas ring-info-bright"
-              : "bg-surface-raised text-accent-bright ring-border-strong group-hover:ring-accent/40",
+              : "bg-surface-raised text-teal ring-border-strong group-hover:ring-teal/40",
         )}
       >
         <MapPin className="h-4 w-4" aria-hidden="true" />
@@ -75,8 +75,8 @@ function MapMarker({
         className={cn(
           "mt-1 max-w-[7rem] truncate rounded-md px-2 py-0.5 text-[10px] font-medium backdrop-blur-sm",
           isSelected
-            ? "bg-accent-glow text-accent-bright ring-1 ring-accent/30"
-            : "bg-surface/90 text-slate-400 ring-1 ring-border-subtle",
+            ? "bg-teal-glow text-navy ring-1 ring-teal/30"
+            : "bg-surface/90 text-health-text-muted ring-1 ring-border-subtle",
         )}
       >
         {hospital.name.split(" ")[0]}
@@ -90,17 +90,18 @@ export function HospitalMapView({
   preferredHospitalId,
   selectedHospitalId,
   onSelectHospital,
+  locationLabel,
 }: HospitalMapViewProps) {
   const clusters = getHospitalsByCluster(hospitals);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border-subtle bg-surface-muted/50 px-4 py-3">
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <Navigation className="h-4 w-4 text-accent-bright" aria-hidden="true" />
+        <div className="flex items-center gap-2 text-sm text-health-text-muted">
+          <Navigation className="h-4 w-4 text-teal" aria-hidden="true" />
           <span>
             Near{" "}
-            <span className="font-medium text-slate-200">{MOCK_USER_LOCATION.label}</span>
+            <span className="font-medium text-health-text">{locationLabel}</span>
           </span>
         </div>
         <Badge variant="outline">{hospitals.length} facilities in range</Badge>
@@ -110,7 +111,7 @@ export function HospitalMapView({
         <div
           className="relative aspect-[4/3] w-full sm:aspect-[16/9]"
           role="img"
-          aria-label="Mock map showing nearby hospital clusters"
+          aria-label="Map showing nearby hospital clusters"
         >
           <div
             className="absolute inset-0 grid gap-px bg-border-subtle p-px"
@@ -141,7 +142,7 @@ export function HospitalMapView({
                 className="pointer-events-none absolute rounded-lg border border-dashed border-slate-700/60 bg-surface/20"
                 style={{ top: `${top}%`, left: `${left}%`, height: `${height}%`, width: `${width}%` }}
               >
-                <span className="absolute left-2 top-2 text-[10px] font-medium uppercase tracking-wider text-slate-600">
+                <span className="absolute left-2 top-2 text-[10px] font-medium uppercase tracking-wider text-health-text-muted">
                   {zone.label}
                 </span>
               </div>
@@ -173,13 +174,13 @@ export function HospitalMapView({
             key={cluster}
             className="rounded-lg border border-border-subtle bg-surface-raised p-3"
           >
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-health-text-muted">
               {CLUSTER_LABELS[cluster]}
             </p>
-            <p className="mt-1 text-2xl font-bold text-slate-100">
+            <p className="mt-1 text-2xl font-bold text-navy">
               {clusters[cluster].length}
             </p>
-            <p className="text-xs text-slate-500">facilities</p>
+            <p className="text-xs text-health-text-muted">facilities</p>
           </div>
         ))}
       </div>

@@ -1,6 +1,6 @@
 import { Bell, Mail, MessageSquare, Smartphone } from "lucide-react";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui";
-import { formatReminderChannels } from "@/data/authStore";
+import { formatReminderChannels } from "@/lib/auth-utils";
 import type { ParentUser } from "@/types/user";
 
 interface ParentContactSummaryProps {
@@ -60,12 +60,12 @@ export function ParentContactSummary({ user }: ParentContactSummaryProps) {
           >
             <div className="flex items-center gap-2">
               <Icon className="h-4 w-4 text-teal" aria-hidden="true" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+              <span className="text-xs font-semibold uppercase tracking-wider text-health-text">
                 {label}
               </span>
             </div>
-            <p className="mt-2 text-xs leading-relaxed text-slate-500">{description}</p>
-            <p className="mt-1 text-[10px] font-medium text-slate-400">
+            <p className="mt-2 text-xs leading-relaxed text-health-text-muted">{description}</p>
+            <p className="mt-1 text-[10px] font-medium text-health-text-muted">
               {enabled ? "Active" : "Disabled"}
             </p>
           </div>

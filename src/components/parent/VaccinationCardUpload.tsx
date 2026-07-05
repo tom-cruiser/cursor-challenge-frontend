@@ -131,12 +131,12 @@ export function VaccinationCardUpload({
             aria-label="Upload vaccination card image"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-overlay ring-1 ring-border-subtle">
-              <ImagePlus className="h-6 w-6 text-slate-500" aria-hidden="true" />
+              <ImagePlus className="h-6 w-6 text-health-text-muted" aria-hidden="true" />
             </div>
-            <p className="mt-3 text-sm font-medium text-slate-300">
+            <p className="mt-3 text-sm font-medium text-health-text">
               Click or drag to upload
             </p>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-health-text-muted">
               JPG, PNG, or WebP · Max {MAX_FILE_SIZE_MB}MB
             </p>
           </div>

@@ -11,6 +11,7 @@ import { LoginPage, RegisterPage } from "@/pages/auth";
 import { LandingPage } from "@/pages/LandingPage";
 import {
   AdminDashboardPage,
+  FamiliesChildrenPage,
   HospitalCatalogsPage,
   ScheduleRulesPage,
 } from "@/pages/admin";
@@ -92,6 +93,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Navigate to="dashboard" replace /> },
           { path: "dashboard", element: <AdminDashboardPage /> },
+          { path: "families", element: <FamiliesChildrenPage /> },
           { path: "hospitals", element: <HospitalCatalogsPage /> },
           { path: "schedules", element: <ScheduleRulesPage /> },
         ],

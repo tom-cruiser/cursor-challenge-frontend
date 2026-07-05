@@ -36,7 +36,7 @@ function buildReminders(
 
 export function RemindersPage() {
   const navigate = useNavigate();
-  const { children, unreadReminders, toggleMilestone } = useParentContext();
+  const { children, unreadReminders, toggleMilestone, isLoading, error } = useParentContext();
 
   const reminders = children.flatMap((child) =>
     buildReminders(child.name, child.milestones),
@@ -46,10 +46,10 @@ export function RemindersPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
+          <h2 className="text-2xl font-semibold tracking-tight text-navy">
             Reminders
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-health-text-muted">
             Upcoming and overdue vaccination notifications.
           </p>
         </div>
@@ -58,7 +58,15 @@ export function RemindersPage() {
         )}
       </div>
 
-      {children.length === 0 ? (
+      {error && (
+        <p className="text-sm text-danger-bright" role="alert">
+          {error}
+        </p>
+      )}
+
+      {isLoading ? (
+        <p className="text-sm text-health-text-muted">Loading reminders...</p>
+      ) : children.length === 0 ? (
         <EmptyState
           icon={Bell}
           title="No reminders yet"
@@ -80,7 +88,7 @@ export function RemindersPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-overlay ring-1 ring-border-subtle">
-                      <Bell className="h-4 w-4 text-accent-bright" aria-hidden="true" />
+                      <Bell className="h-4 w-4 text-teal" aria-hidden="true" />
                     </div>
                     <div>
                       <CardTitle className="text-sm">{reminder.label}</CardTitle>
@@ -93,7 +101,7 @@ export function RemindersPage() {
                 </div>
               </CardHeader>
               <CardContent className="flex items-center justify-between pt-3">
-                <div className="flex items-center gap-4 text-xs text-slate-500">
+                <div className="flex items-center gap-4 text-xs text-health-text-muted">
                   <span className="flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
                     Due {formatDueDate(reminder.dueDate)}

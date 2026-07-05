@@ -104,7 +104,7 @@
   }
 }
 
-/* Healthcare theme for the parent portal — navy + teal on soft blue-gray */
+/* Shared light theme for parent and admin portals — navy + teal on soft blue-gray */
 @layer components {
   .parent-theme {
     @apply bg-health-canvas bg-mesh-health text-health-text;
@@ -275,8 +275,26 @@
     color: #5a6b7d;
   }
 
+  .parent-theme .text-slate-500 {
+    @apply text-health-text-muted;
+  }
+
   .parent-theme .text-slate-600 {
     color: #94a3b8;
+  }
+
+  /* Badge & chip readability on light backgrounds */
+  .parent-theme .bg-surface-overlay.text-slate-400,
+  .parent-theme .bg-transparent.text-slate-400 {
+    @apply text-health-text-muted;
+  }
+
+  .parent-theme .bg-surface-muted.text-slate-400 {
+    @apply text-health-text-muted;
+  }
+
+  .parent-theme .bg-info-glow.text-info-bright {
+    @apply bg-teal-glow text-teal-muted;
   }
 
   .parent-theme .text-canvas {
@@ -339,5 +357,62 @@
 
   .parent-theme .group-\[\[aria-current\=page\]\]\:drop-shadow-\[0_0_6px_rgba\(16\,185\,129\,0\.5\)\] {
     filter: drop-shadow(0 0 6px rgba(0, 139, 155, 0.45));
+  }
+}
+
+/* Light-theme text overrides — utilities layer so they beat dark-theme text utilities */
+@layer utilities {
+  .parent-theme table {
+    @apply text-health-text;
+  }
+
+  .parent-theme table thead th {
+    @apply text-health-text-muted;
+  }
+
+  .parent-theme .text-slate-100,
+  .parent-theme .text-slate-200 {
+    @apply text-health-text;
+  }
+
+  .parent-theme .text-slate-300 {
+    color: #475569;
+  }
+
+  .parent-theme .text-slate-400 {
+    color: #5a6b7d;
+  }
+
+  .parent-theme .text-slate-500 {
+    @apply text-health-text-muted;
+  }
+
+  .parent-theme .text-slate-600 {
+    color: #64748b;
+  }
+
+  .parent-theme .text-accent-bright,
+  .parent-theme .text-accent {
+    @apply text-teal;
+  }
+
+  .parent-theme .text-info-bright {
+    @apply text-teal-muted;
+  }
+
+  .parent-theme .bg-accent-glow.text-accent-bright,
+  .parent-theme .bg-accent-glow.text-accent-bright.ring-accent\/30,
+  .parent-theme .bg-accent-glow.text-accent-bright.ring-accent\/20 {
+    @apply bg-sage-glow text-sage-muted ring-sage/30;
+  }
+
+  .parent-theme .bg-info-glow.text-info-bright {
+    @apply bg-teal-glow text-teal-muted;
+  }
+
+  .parent-theme .bg-surface-overlay.text-slate-400,
+  .parent-theme .bg-transparent.text-slate-400,
+  .parent-theme .bg-surface-muted.text-slate-400 {
+    @apply text-health-text-muted;
   }
 }

@@ -67,8 +67,8 @@ function ParentLayoutShell() {
               {user.initials}
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-200">{user.name}</p>
-              <p className="text-xs text-slate-500">{user.email}</p>
+              <p className="text-sm font-medium text-health-text">{user.name}</p>
+              <p className="text-xs text-health-text-muted">{user.email}</p>
             </div>
           </div>
 

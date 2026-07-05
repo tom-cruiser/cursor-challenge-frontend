@@ -2,16 +2,20 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
-import { generateLeadTimeNotifications, applyDemoNotificationDueDates } from "@/data/notificationEngine";
-import { countDueSoonMilestones, createChildProfile } from "@/data/timelineEngine";
+import { generateLeadTimeNotifications } from "@/data/notificationEngine";
+import { countDueSoonMilestones } from "@/data/timelineEngine";
+import { mapChildWithTimeline } from "@/lib/api/mappers";
+import * as parentApi from "@/lib/api/parent";
+import { isApiConfigured } from "@/lib/config";
+import { useAuth } from "@/contexts/AuthContext";
 import type { AddChildInput, ChildProfile, ParentUser } from "@/types/user";
 import type { AppNotification, LeadTimeDays } from "@/types/notification";
 import { DEFAULT_REMINDER_CHANNELS } from "@/types/auth";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface ParentContextValue {
   user: ParentUser;
@@ -22,21 +26,31 @@ interface ParentContextValue {
   notifications: AppNotification[];
   unreadNotificationCount: number;
   notificationLeadTime: LeadTimeDays;
+  isLoading: boolean;
+  error: string | null;
+  refreshChildren: () => Promise<void>;
   setActiveChildId: (id: string | null) => void;
   setNotificationLeadTime: (days: LeadTimeDays) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
   readNotificationIds: Set<string>;
-  addChild: (input: AddChildInput) => ChildProfile;
-  toggleMilestone: (childId: string, milestoneId: string) => void;
-  setPreferredHospital: (childId: string, hospitalId: string) => void;
+  addChild: (input: AddChildInput) => Promise<ChildProfile>;
+  toggleMilestone: (childId: string, milestoneId: string) => Promise<void>;
+  setPreferredHospital: (childId: string, hospitalId: string) => Promise<void>;
   setVaccinationCardImage: (childId: string, imageUrl: string | null) => void;
 }
 
 const ParentContext = createContext<ParentContextValue | null>(null);
 
-function createChildId(): string {
-  return `child-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+async function loadChildrenFromApi(): Promise<ChildProfile[]> {
+  const children = await parentApi.listChildren();
+  const profiles = await Promise.all(
+    children.map(async (child) => {
+      const timeline = await parentApi.getTimeline(child.id);
+      return mapChildWithTimeline(child, timeline);
+    }),
+  );
+  return profiles;
 }
 
 export function ParentProvider({ children }: { children: ReactNode }) {
@@ -45,74 +59,108 @@ export function ParentProvider({ children }: { children: ReactNode }) {
   const [activeChildId, setActiveChildId] = useState<string | null>(null);
   const [notificationLeadTime, setNotificationLeadTime] = useState<LeadTimeDays>(3);
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const addChild = useCallback((input: AddChildInput) => {
-    const newChild = applyDemoNotificationDueDates(
-      createChildProfile({
-        id: createChildId(),
+  const canLoadData = isApiConfigured() && Boolean(authUser?.id);
+
+  const refreshChildren = useCallback(async () => {
+    if (!canLoadData) {
+      setChildProfiles([]);
+      setActiveChildId(null);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const profiles = await loadChildrenFromApi();
+      setChildProfiles(profiles);
+      setActiveChildId((current) => {
+        if (current && profiles.some((child) => child.id === current)) {
+          return current;
+        }
+        return profiles[0]?.id ?? null;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load children.");
+      setChildProfiles([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [canLoadData]);
+
+  useEffect(() => {
+    void refreshChildren();
+  }, [refreshChildren, authUser?.id]);
+
+  const addChild = useCallback(
+    async (input: AddChildInput) => {
+      if (!canLoadData) {
+        throw new Error("Backend API is not available.");
+      }
+
+      const result = await parentApi.createChild({
         name: input.name.trim(),
         dateOfBirth: input.dateOfBirth,
         sex: input.sex,
-      }),
-    );
+      });
+      const profile = mapChildWithTimeline(result.child, result.schedule);
+      setChildProfiles((current) => [...current, profile]);
+      setActiveChildId(profile.id);
+      return profile;
+    },
+    [canLoadData],
+  );
 
-    setChildProfiles((current) => [...current, newChild]);
-    setActiveChildId(newChild.id);
+  const toggleMilestone = useCallback(
+    async (childId: string, milestoneId: string) => {
+      if (!canLoadData) {
+        return;
+      }
 
-    return newChild;
-  }, []);
+      const child = childProfiles.find((profile) => profile.id === childId);
+      const milestone = child?.milestones.find((item) => item.id === milestoneId);
 
-  const toggleMilestone = useCallback((childId: string, milestoneId: string) => {
-    setChildProfiles((current) =>
-      current.map((child) => {
-        if (child.id !== childId) {
-          return child;
-        }
+      if (!milestone || milestone.completed) {
+        return;
+      }
 
-        return {
-          ...child,
-          milestones: child.milestones.map((milestone) => {
-            if (milestone.id !== milestoneId) {
-              return milestone;
-            }
+      await parentApi.markTimelineComplete(milestoneId);
+      await refreshChildren();
+    },
+    [childProfiles, canLoadData, refreshChildren],
+  );
 
-            const completed = !milestone.completed;
+  const setPreferredHospital = useCallback(
+    async (childId: string, hospitalId: string) => {
+      if (!canLoadData) {
+        return;
+      }
 
-            return {
-              ...milestone,
-              completed,
-              completedAt: completed ? new Date().toISOString().split("T")[0] : undefined,
-            };
-          }),
-        };
-      }),
-    );
-  }, []);
+      const child = childProfiles.find((profile) => profile.id === childId);
+      const isCurrentlyPreferred = child?.preferredHospitalId === hospitalId;
 
-  const setPreferredHospital = useCallback((childId: string, hospitalId: string) => {
-    setChildProfiles((current) =>
-      current.map((child) => {
-        if (child.id !== childId) {
-          return child;
-        }
+      if (isCurrentlyPreferred) {
+        return;
+      }
 
-        const isCurrentlyPreferred = child.preferredHospitalId === hospitalId;
-
-        return {
-          ...child,
-          preferredHospitalId: isCurrentlyPreferred ? null : hospitalId,
-        };
-      }),
-    );
-  }, []);
+      await parentApi.registerToHospital(hospitalId);
+      const result = await parentApi.setPreferredHospital(childId, hospitalId);
+      const profile = mapChildWithTimeline(result.child, result.schedule);
+      setChildProfiles((current) =>
+        current.map((item) => (item.id === childId ? profile : item)),
+      );
+    },
+    [childProfiles, canLoadData],
+  );
 
   const setVaccinationCardImage = useCallback(
     (childId: string, imageUrl: string | null) => {
       setChildProfiles((current) =>
         current.map((child) =>
-          child.id === childId
-            ? { ...child, vaccinationCardImageUrl: imageUrl }
-            : child,
+          child.id === childId ? { ...child, vaccinationCardImageUrl: imageUrl } : child,
         ),
       );
     },
@@ -170,6 +218,9 @@ export function ParentProvider({ children }: { children: ReactNode }) {
       notifications,
       unreadNotificationCount,
       notificationLeadTime,
+      isLoading,
+      error,
+      refreshChildren,
       readNotificationIds,
       setActiveChildId,
       setNotificationLeadTime,
@@ -189,6 +240,9 @@ export function ParentProvider({ children }: { children: ReactNode }) {
       notifications,
       unreadNotificationCount,
       notificationLeadTime,
+      isLoading,
+      error,
+      refreshChildren,
       readNotificationIds,
       markNotificationRead,
       markAllNotificationsRead,

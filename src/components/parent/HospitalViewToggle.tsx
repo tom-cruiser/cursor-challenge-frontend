@@ -31,7 +31,7 @@ export function HospitalViewToggle({ viewMode, onChange }: HospitalViewTogglePro
           className={cn(
             "gap-2 rounded-md px-3",
             viewMode === mode &&
-              "bg-accent-glow text-accent-bright shadow-glow-sm ring-1 ring-accent/20 hover:bg-accent-glow hover:text-accent-bright",
+              "bg-teal-glow text-navy shadow-glow-teal-sm ring-1 ring-teal/20 hover:bg-teal-glow hover:text-navy",
           )}
         >
           <Icon className="h-4 w-4" aria-hidden="true" />

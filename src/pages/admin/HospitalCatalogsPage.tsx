@@ -1,35 +1,141 @@
-import { useMemo, useState } from "react";
-import { MapPin, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Building2, MapPin, Pencil, Plus } from "lucide-react";
 import {
   DataTable,
   RegisterHospitalForm,
   SlideOver,
+  createDefaultOperatingHours,
 } from "@/components/admin";
 import { Badge, Button, Input } from "@/components/ui";
+import { ApiError } from "@/lib/api/client";
 import {
-  filterHospitals,
+  filterAdminHospitals,
   formatCoordinates,
-  mockAdminHospitals,
-  registerHospital,
-} from "@/data/mockAdminCatalogs";
-import { VERIFIED_TAG_LABELS, type AdminHospitalFacility, type RegisterHospitalInput } from "@/types/catalog";
-import { SERVICE_LABELS } from "@/types/hospital";
+} from "@/lib/catalog-utils";
+import * as hospitalApi from "@/lib/api/hospital";
+import { mapHospitalToAdminFacility } from "@/lib/api/mappers";
+import type { ApiHospital } from "@/lib/api/types";
+import {
+  VERIFIED_TAG_LABELS,
+  type AdminHospitalFacility,
+  type RegisterHospitalInput,
+} from "@/types/catalog";
+import { SERVICE_LABELS, type HospitalService } from "@/types/hospital";
+
+function hospitalToFormInput(hospital: ApiHospital): RegisterHospitalInput {
+  const operatingHours = createDefaultOperatingHours();
+
+  for (const [day, hours] of Object.entries(hospital.operating_hours ?? {})) {
+    if (day in operatingHours) {
+      operatingHours[day as keyof typeof operatingHours] = {
+        open: hours.open,
+        close: hours.close,
+        vaccination: hours.vaccination,
+      };
+    }
+  }
+
+  return {
+    name: hospital.name,
+    address: hospital.address ?? "",
+    latitude: hospital.latitude,
+    longitude: hospital.longitude,
+    helpPhone: hospital.help_phone ?? "",
+    country: hospital.country ?? "",
+    services: (hospital.services.length
+      ? hospital.services
+      : ["vaccination"]) as HospitalService[],
+    operatingHours,
+  };
+}
 
 export function HospitalCatalogsPage() {
-  const [hospitals, setHospitals] = useState<AdminHospitalFacility[]>(mockAdminHospitals);
+  const [hospitals, setHospitals] = useState<AdminHospitalFacility[]>([]);
+  const [profile, setProfile] = useState<ApiHospital | null>(null);
+  const [hasProfile, setHasProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [slideOverOpen, setSlideOverOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [slideOverOpen, setSlideOverOpen] = useState(false);
+
+  const loadHospitalProfile = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const [loadedProfile, vaccines] = await Promise.all([
+        hospitalApi.getProfile(),
+        hospitalApi.listVaccines(),
+      ]);
+      setProfile(loadedProfile);
+      setHasProfile(true);
+      setHospitals([mapHospitalToAdminFacility(loadedProfile, vaccines.length)]);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setProfile(null);
+        setHasProfile(false);
+        setHospitals([]);
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to load hospital profile.");
+        setProfile(null);
+        setHasProfile(false);
+        setHospitals([]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadHospitalProfile();
+  }, [loadHospitalProfile]);
 
   const filteredHospitals = useMemo(
-    () => filterHospitals(hospitals, searchQuery),
+    () => filterAdminHospitals(hospitals, searchQuery),
     [hospitals, searchQuery],
   );
 
-  function handleRegister(input: RegisterHospitalInput) {
-    setHospitals((current) => registerHospital(current, input));
+  function openForm() {
+    setSlideOverOpen(true);
+  }
+
+  function closeForm() {
     setSlideOverOpen(false);
-    setSuccessMessage(`${input.name} registered and pending verification.`);
+  }
+
+  async function handleSubmit(input: RegisterHospitalInput) {
+    setIsSaving(true);
+    setError(null);
+
+    const payload = {
+      name: input.name.trim(),
+      address: input.address.trim(),
+      latitude: input.latitude,
+      longitude: input.longitude,
+      helpPhone: input.helpPhone.trim() || undefined,
+      country: input.country.trim() || undefined,
+      services: input.services,
+      operatingHours: input.operatingHours,
+    };
+
+    try {
+      if (hasProfile) {
+        await hospitalApi.updateProfile(payload);
+        setSuccessMessage("Hospital profile updated successfully.");
+      } else {
+        await hospitalApi.signup(payload);
+        setSuccessMessage("Hospital registered successfully.");
+      }
+
+      closeForm();
+      await loadHospitalProfile();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save hospital profile.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   const columns = [
@@ -38,16 +144,22 @@ export function HospitalCatalogsPage() {
       header: "Facility",
       render: (hospital: AdminHospitalFacility) => (
         <div>
-          <p className="font-medium text-slate-200">{hospital.name}</p>
-          <p className="text-xs text-slate-500">{hospital.address}</p>
+          <p className="font-medium text-health-text">{hospital.name}</p>
+          <p className="text-xs text-health-text-muted">{hospital.address}</p>
         </div>
       ),
     },
     {
       key: "region",
-      header: "Region",
+      header: "Country",
       className: "whitespace-nowrap",
       render: (hospital: AdminHospitalFacility) => hospital.region,
+    },
+    {
+      key: "phone",
+      header: "Phone",
+      className: "whitespace-nowrap text-xs",
+      render: (hospital: AdminHospitalFacility) => hospital.helpPhone,
     },
     {
       key: "coordinates",
@@ -55,7 +167,7 @@ export function HospitalCatalogsPage() {
       className: "whitespace-nowrap font-mono text-xs",
       render: (hospital: AdminHospitalFacility) => (
         <span className="flex items-center gap-1.5">
-          <MapPin className="h-3.5 w-3.5 text-accent-bright" aria-hidden="true" />
+          <MapPin className="h-3.5 w-3.5 text-teal" aria-hidden="true" />
           {formatCoordinates(hospital.coordinates)}
         </span>
       ),
@@ -66,7 +178,7 @@ export function HospitalCatalogsPage() {
       render: (hospital: AdminHospitalFacility) => (
         <div className="flex flex-wrap gap-1.5">
           {hospital.verifiedTags.length === 0 ? (
-            <span className="text-xs text-slate-500">None</span>
+            <span className="text-xs text-health-text-muted">None</span>
           ) : (
             hospital.verifiedTags.map((tag) => (
               <Badge key={tag} variant="outline" className="text-[10px]">
@@ -84,7 +196,7 @@ export function HospitalCatalogsPage() {
         <div className="flex flex-wrap gap-1.5">
           {hospital.services.map((service) => (
             <Badge key={service} priority="medium" className="text-[10px]">
-              {SERVICE_LABELS[service]}
+              {SERVICE_LABELS[service] ?? service.replace(/_/g, " ")}
             </Badge>
           ))}
         </div>
@@ -120,53 +232,90 @@ export function HospitalCatalogsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
+          <h2 className="text-2xl font-semibold tracking-tight text-navy">
             Hospital Directory
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Register facilities with coordinates, verified tags, and service classifications.
+          <p className="mt-1 text-sm text-health-text-muted">
+            Register and manage your hospital facility. Each operator account owns one hospital.
           </p>
         </div>
-        <Button size="sm" onClick={() => setSlideOverOpen(true)}>
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          Register Facility
+        <Button size="sm" onClick={openForm}>
+          {hasProfile ? (
+            <>
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+              Edit Hospital
+            </>
+          ) : (
+            <>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Register Hospital
+            </>
+          )}
         </Button>
       </div>
 
+      {!isLoading && (
+        <div className="flex flex-wrap gap-4 text-sm text-health-text-muted">
+          <span className="flex items-center gap-1.5">
+            <Building2 className="h-4 w-4 text-teal" aria-hidden="true" />
+            <span className="font-semibold text-teal">{hospitals.length}</span>{" "}
+            {hospitals.length === 1 ? "facility" : "facilities"} registered
+          </span>
+        </div>
+      )}
+
       {successMessage && (
         <div
-          className="rounded-lg border border-accent/30 bg-accent-glow px-4 py-3 text-sm text-accent-bright"
+          className="rounded-lg border border-teal/30 bg-teal-glow px-4 py-3 text-sm text-teal-muted"
           role="status"
         >
           {successMessage}
         </div>
       )}
 
+      {error && (
+        <p className="text-sm text-danger-bright" role="alert">
+          {error}
+        </p>
+      )}
+
       <Input
         label="Search directory"
-        placeholder="Search by name, region, or address..."
+        placeholder="Search by name, country, or address..."
         value={searchQuery}
         onChange={(event) => setSearchQuery(event.target.value)}
         aria-label="Search hospital directory"
       />
 
-      <DataTable
-        columns={columns}
-        data={filteredHospitals}
-        getRowId={(hospital) => hospital.id}
-        caption="Registered hospital and clinic facilities"
-        emptyMessage="No facilities match your search."
-      />
+      {isLoading ? (
+        <p className="text-sm text-health-text-muted">Loading hospital directory...</p>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filteredHospitals}
+          getRowId={(hospital) => hospital.id}
+          caption="Your registered hospital facility"
+          emptyMessage="No hospital registered yet. Use Register Hospital to add your facility."
+        />
+      )}
 
       <SlideOver
         open={slideOverOpen}
-        onClose={() => setSlideOverOpen(false)}
-        title="Register Health Facility"
-        description="Add a new facility with structural coordinates and verified tagging options."
+        onClose={closeForm}
+        title={hasProfile ? "Edit Hospital Profile" : "Register Hospital"}
+        description={
+          hasProfile
+            ? "Update your facility details, services, and operating hours."
+            : "Create your hospital profile to appear in the parent directory."
+        }
+        width="lg"
       >
         <RegisterHospitalForm
-          onSubmit={handleRegister}
-          onCancel={() => setSlideOverOpen(false)}
+          mode={hasProfile ? "edit" : "create"}
+          initialValues={profile ? hospitalToFormInput(profile) : undefined}
+          isSubmitting={isSaving}
+          onSubmit={(input) => void handleSubmit(input)}
+          onCancel={closeForm}
         />
       </SlideOver>
     </div>

@@ -45,7 +45,7 @@ const statusConfig: Record<
     sectionClass: "border-health-muted bg-health-muted/60",
     cardClass: "border-health-muted bg-health-raised/90",
     icon: Circle,
-    iconClass: "bg-health-muted text-slate-500 ring-slate-300/80",
+    iconClass: "bg-health-muted text-health-text-muted ring-health-muted",
     badgePriority: "medium" as const,
   },
 };
@@ -108,7 +108,7 @@ function MilestoneToggle({
         )}
       >
         {milestone.completed && (
-          <Check className="h-3 w-3 text-accent" aria-hidden="true" />
+          <Check className="h-3 w-3 text-teal" aria-hidden="true" />
         )}
       </span>
     </button>
@@ -152,13 +152,13 @@ function MilestoneCard({
           <MilestoneToggle milestone={milestone} onToggle={onToggle} />
         </div>
       </CardHeader>
-      <CardContent className="flex flex-wrap items-center gap-4 pt-3 text-xs text-slate-500">
+      <CardContent className="flex flex-wrap items-center gap-4 pt-3 text-xs text-health-text-muted">
         <span className="flex items-center gap-1.5">
           <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
           Due {formatDueDate(milestone.dueDate)}
         </span>
         {milestone.completed && milestone.completedAt && (
-          <span className="text-accent-bright">
+          <span className="text-teal">
             Completed {formatDueDate(milestone.completedAt)}
           </span>
         )}
@@ -180,10 +180,10 @@ export function InteractiveTimeline({
       <div className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h3 className="text-lg font-semibold text-slate-100">
+            <h3 className="text-lg font-semibold text-navy">
               {childName}&apos;s Immunization Timeline
             </h3>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-health-text-muted">
               {progress.completed} of {progress.total} milestones completed
             </p>
           </div>
@@ -231,11 +231,11 @@ export function InteractiveTimeline({
               </div>
               <h4
                 id={`timeline-section-${status}`}
-                className="text-sm font-semibold uppercase tracking-wider text-slate-200"
+                className="text-sm font-semibold uppercase tracking-wider text-health-text"
               >
                 {config.label}
               </h4>
-              <span className="text-xs text-slate-500">({items.length})</span>
+              <span className="text-xs text-health-text-muted">({items.length})</span>
             </div>
 
             <div className="space-y-3">

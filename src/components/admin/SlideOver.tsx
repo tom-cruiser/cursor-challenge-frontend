@@ -48,7 +48,7 @@ export function SlideOver({
     <div className="fixed inset-0 z-50 flex justify-end" role="presentation">
       <button
         type="button"
-        className="absolute inset-0 bg-canvas/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-navy/25 backdrop-blur-sm"
         onClick={onClose}
         aria-label="Close panel"
       />
@@ -59,17 +59,17 @@ export function SlideOver({
         aria-labelledby="slideover-title"
         aria-describedby={description ? "slideover-description" : undefined}
         className={cn(
-          "relative flex h-full w-full flex-col border-l border-border-subtle bg-surface shadow-card",
+          "relative flex h-full w-full flex-col border-l border-health-muted bg-health-surface shadow-health-card",
           width === "md" ? "max-w-md" : "max-w-xl",
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border-subtle px-6 py-5">
+        <div className="flex items-start justify-between gap-4 border-b border-health-muted px-6 py-5">
           <div>
-            <h2 id="slideover-title" className="text-lg font-semibold text-slate-100">
+            <h2 id="slideover-title" className="text-lg font-semibold text-navy">
               {title}
             </h2>
             {description && (
-              <p id="slideover-description" className="mt-1 text-sm text-slate-500">
+              <p id="slideover-description" className="mt-1 text-sm text-health-text-muted">
                 {description}
               </p>
             )}

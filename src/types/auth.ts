@@ -26,12 +26,21 @@ export interface RegisterInput {
   confirmPassword: string;
   organization?: string;
   phone?: string;
+  country?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
   reminderChannels?: ReminderChannels;
 }
 
 export interface LoginInput {
   email: string;
   password: string;
+}
+
+export interface PhoneLoginInput {
+  phone: string;
+  otp: string;
 }
 
 export interface StoredAccount extends AuthUser {

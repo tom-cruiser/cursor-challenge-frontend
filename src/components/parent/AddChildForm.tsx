@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { X } from "lucide-react";
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@/components/ui";
-import { sexLabels } from "@/data/mockUsers";
+import { sexLabels } from "@/lib/child-labels";
 import { useParentContext } from "@/contexts";
 import { cn } from "@/lib/cn";
 import type { ChildSex } from "@/types/user";
@@ -32,6 +32,8 @@ export function AddChildForm({ onSuccess, onCancel }: AddChildFormProps) {
   const { addChild } = useParentContext();
   const [form, setForm] = useState<FormState>(initialFormState);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   function validate(values: FormState): FormErrors {
     const nextErrors: FormErrors = {};
@@ -55,8 +57,9 @@ export function AddChildForm({ onSuccess, onCancel }: AddChildFormProps) {
     return nextErrors;
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitError(null);
 
     const nextErrors = validate(form);
     setErrors(nextErrors);
@@ -65,15 +68,23 @@ export function AddChildForm({ onSuccess, onCancel }: AddChildFormProps) {
       return;
     }
 
-    addChild({
-      name: form.name,
-      dateOfBirth: form.dateOfBirth,
-      sex: form.sex,
-    });
+    setIsSubmitting(true);
 
-    setForm(initialFormState);
-    setErrors({});
-    onSuccess?.();
+    try {
+      await addChild({
+        name: form.name,
+        dateOfBirth: form.dateOfBirth,
+        sex: form.sex,
+      });
+
+      setForm(initialFormState);
+      setErrors({});
+      onSuccess?.();
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to create child profile.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -83,8 +94,7 @@ export function AddChildForm({ onSuccess, onCancel }: AddChildFormProps) {
           <div>
             <CardTitle>Add Child Profile</CardTitle>
             <CardDescription>
-              A timeline of 5 mandatory immunization milestones will be generated
-              automatically from the date of birth.
+              A vaccination timeline will be generated once a preferred hospital is selected.
             </CardDescription>
           </div>
           {onCancel && (
@@ -94,6 +104,7 @@ export function AddChildForm({ onSuccess, onCancel }: AddChildFormProps) {
               size="sm"
               onClick={onCancel}
               aria-label="Close add child form"
+              disabled={isSubmitting}
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </Button>
@@ -101,7 +112,7 @@ export function AddChildForm({ onSuccess, onCancel }: AddChildFormProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4">
           <Input
             label="Full name"
             name="name"
@@ -110,6 +121,7 @@ export function AddChildForm({ onSuccess, onCancel }: AddChildFormProps) {
             placeholder="e.g. Emma Chen"
             error={errors.name}
             autoComplete="name"
+            disabled={isSubmitting}
           />
 
           <Input
@@ -122,10 +134,11 @@ export function AddChildForm({ onSuccess, onCancel }: AddChildFormProps) {
             }
             error={errors.dateOfBirth}
             max={new Date().toISOString().split("T")[0]}
+            disabled={isSubmitting}
           />
 
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-slate-300">Sex</legend>
+            <legend className="text-sm font-medium text-health-text">Sex</legend>
             <div className="flex flex-wrap gap-2">
               {(Object.keys(sexLabels) as ChildSex[]).map((sex) => (
                 <label
@@ -133,8 +146,9 @@ export function AddChildForm({ onSuccess, onCancel }: AddChildFormProps) {
                   className={cn(
                     "cursor-pointer rounded-lg px-4 py-2 text-sm font-medium ring-1 transition-all",
                     form.sex === sex
-                      ? "bg-accent-glow text-accent-bright ring-accent/30"
-                      : "bg-surface-muted text-slate-400 ring-border-subtle hover:text-slate-200",
+                      ? "bg-teal-glow text-navy ring-teal/30"
+                      : "bg-surface-muted text-health-text-muted ring-border-subtle hover:text-health-text",
+                    isSubmitting && "pointer-events-none opacity-60",
                   )}
                 >
                   <input
@@ -144,6 +158,7 @@ export function AddChildForm({ onSuccess, onCancel }: AddChildFormProps) {
                     checked={form.sex === sex}
                     onChange={() => setForm((current) => ({ ...current, sex }))}
                     className="sr-only"
+                    disabled={isSubmitting}
                   />
                   {sexLabels[sex]}
                 </label>
@@ -151,13 +166,21 @@ export function AddChildForm({ onSuccess, onCancel }: AddChildFormProps) {
             </div>
           </fieldset>
 
+          {submitError && (
+            <p className="text-sm text-danger-bright" role="alert">
+              {submitError}
+            </p>
+          )}
+
           <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
             {onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel}>
+              <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
                 Cancel
               </Button>
             )}
-            <Button type="submit">Create Profile &amp; Generate Timeline</Button>
+            <Button type="submit" isLoading={isSubmitting}>
+              Create Profile
+            </Button>
           </div>
         </form>
       </CardContent>

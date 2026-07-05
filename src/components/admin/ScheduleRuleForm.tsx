@@ -13,6 +13,7 @@ import type {
 interface ScheduleRuleFormProps {
   mode: "create" | "version";
   baseVersion?: VaccineScheduleVersion;
+  isSubmitting?: boolean;
   onSubmitCreate: (input: CreateScheduleInput) => void;
   onSubmitVersion: (input: VersionScheduleInput) => void;
   onCancel: () => void;
@@ -27,6 +28,7 @@ function emptyDose(doseNumber: number): DosingRule {
 export function ScheduleRuleForm({
   mode,
   baseVersion,
+  isSubmitting = false,
   onSubmitCreate,
   onSubmitVersion,
   onCancel,
@@ -128,8 +130,8 @@ export function ScheduleRuleForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {mode === "version" && baseVersion && (
-        <div className="rounded-lg border border-info/20 bg-info-glow/20 px-4 py-3 text-sm text-slate-300">
-          Versioning <span className="font-semibold text-slate-100">{baseVersion.vaccineName}</span>{" "}
+        <div className="rounded-lg border border-teal/20 bg-teal-glow/30 px-4 py-3 text-sm text-health-text">
+          Versioning <span className="font-semibold text-navy">{baseVersion.vaccineName}</span>{" "}
           v{baseVersion.version}. The current active version will be archived; historical
           records remain intact.
         </div>
@@ -146,7 +148,7 @@ export function ScheduleRuleForm({
           />
 
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-slate-300">Priority</legend>
+            <legend className="text-sm font-medium text-health-text">Priority</legend>
             <div className="flex flex-wrap gap-2">
               {PRIORITIES.map((item) => (
                 <label
@@ -154,8 +156,8 @@ export function ScheduleRuleForm({
                   className={cn(
                     "cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium capitalize ring-1 transition-all",
                     priority === item
-                      ? "bg-accent-glow text-accent-bright ring-accent/30"
-                      : "bg-surface-muted text-slate-400 ring-border-subtle",
+                      ? "bg-teal-glow text-teal ring-teal/30"
+                      : "bg-health-muted text-health-text-muted ring-health-muted",
                   )}
                 >
                   <input
@@ -174,7 +176,7 @@ export function ScheduleRuleForm({
       )}
 
       <fieldset className="space-y-3">
-        <legend className="text-sm font-medium text-slate-300">Dosing rules</legend>
+        <legend className="text-sm font-medium text-health-text">Dosing rules</legend>
         {errors.dosingRules && (
           <p className="text-xs text-danger-bright" role="alert">
             {errors.dosingRules}
@@ -184,7 +186,7 @@ export function ScheduleRuleForm({
           {dosingRules.map((rule, index) => (
             <div
               key={index}
-              className="grid gap-3 rounded-lg border border-border-subtle bg-surface-muted/50 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
+              className="grid gap-3 rounded-lg border border-health-muted bg-health-muted/50 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
             >
               <Input
                 label="Dose label"
@@ -248,7 +250,7 @@ export function ScheduleRuleForm({
       />
 
       <div className="space-y-1.5">
-        <label htmlFor="schedule-notes" className="block text-sm font-medium text-slate-300">
+        <label htmlFor="schedule-notes" className="block text-sm font-medium text-health-text">
           Version notes
         </label>
         <textarea
@@ -257,15 +259,15 @@ export function ScheduleRuleForm({
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
           placeholder="Document changes for audit trail..."
-          className="flex w-full rounded-lg border bg-surface-muted px-3 py-2 text-sm text-slate-100 ring-1 ring-border-subtle placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring"
+          className="flex w-full rounded-lg border border-health-muted bg-health-muted px-3 py-2 text-sm text-health-text ring-1 ring-health-muted placeholder:text-health-text-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-ring"
         />
       </div>
 
-      <div className="flex flex-col-reverse gap-2 border-t border-border-subtle pt-5 sm:flex-row sm:justify-end">
+      <div className="flex flex-col-reverse gap-2 border-t border-health-muted pt-5 sm:flex-row sm:justify-end">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit">
+        <Button type="submit" isLoading={isSubmitting}>
           {mode === "version" ? "Publish New Version" : "Add to Catalog"}
         </Button>
       </div>

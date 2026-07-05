@@ -11,6 +11,10 @@ import { DEFAULT_REMINDER_CHANNELS } from "@/types/auth";
 const USERS_KEY = "vaxreminder_users";
 const SESSION_KEY = "vaxreminder_session";
 
+/** Demo phones must match backend seed users (see supabase migration + scripts/seed-data.ts). */
+const DEMO_PARENT_PHONE = "+250788000001";
+const DEMO_ADMIN_PHONE = "+250780000001";
+
 const DEMO_ACCOUNTS: StoredAccount[] = [
   {
     id: "user-parent-demo",
@@ -19,7 +23,7 @@ const DEMO_ACCOUNTS: StoredAccount[] = [
     password: "password123",
     role: "parent",
     initials: "SC",
-    phone: "+1 (555) 234-8891",
+    phone: DEMO_PARENT_PHONE,
     reminderChannels: { sms: true, email: true, inApp: true },
   },
   {
@@ -30,6 +34,7 @@ const DEMO_ACCOUNTS: StoredAccount[] = [
     role: "admin",
     initials: "MW",
     organization: "VaxReminder Health Network",
+    phone: DEMO_ADMIN_PHONE,
   },
 ];
 
@@ -70,6 +75,16 @@ function validateParentContacts(input: RegisterInput): void {
   }
 }
 
+function patchDemoAccountPhones(user: StoredAccount): StoredAccount {
+  if (user.email === "admin@demo.com" && user.role === "admin") {
+    return { ...user, phone: user.phone ?? DEMO_ADMIN_PHONE };
+  }
+  if (user.email === "parent@demo.com" && user.role === "parent") {
+    return { ...user, phone: user.phone ?? DEMO_PARENT_PHONE };
+  }
+  return user;
+}
+
 function loadUsers(): StoredAccount[] {
   try {
     const raw = localStorage.getItem(USERS_KEY);
@@ -77,7 +92,9 @@ function loadUsers(): StoredAccount[] {
       localStorage.setItem(USERS_KEY, JSON.stringify(DEMO_ACCOUNTS));
       return DEMO_ACCOUNTS;
     }
-    return JSON.parse(raw) as StoredAccount[];
+    const users = (JSON.parse(raw) as StoredAccount[]).map(patchDemoAccountPhones);
+    saveUsers(users);
+    return users;
   } catch {
     return DEMO_ACCOUNTS;
   }
@@ -98,7 +115,14 @@ export function getSession(): AuthUser | null {
     if (!raw) {
       return null;
     }
-    return JSON.parse(raw) as AuthUser;
+    const session = JSON.parse(raw) as AuthUser;
+    if (session.email === "admin@demo.com" && session.role === "admin") {
+      return { ...session, phone: session.phone ?? DEMO_ADMIN_PHONE };
+    }
+    if (session.email === "parent@demo.com" && session.role === "parent") {
+      return { ...session, phone: session.phone ?? DEMO_PARENT_PHONE };
+    }
+    return session;
   } catch {
     return null;
   }
@@ -150,7 +174,10 @@ export function registerUser(input: RegisterInput, role: UserRole): AuthUser {
     initials: getInitials(input.name.trim()),
     organization:
       role === "admin" ? input.organization?.trim() || "VaxReminder Network" : undefined,
-    phone: role === "parent" ? input.phone?.trim() : undefined,
+    phone:
+      role === "parent"
+        ? input.phone?.trim()
+        : input.phone?.trim() || `+250788${String(Date.now()).slice(-6)}`,
     reminderChannels,
   };
 

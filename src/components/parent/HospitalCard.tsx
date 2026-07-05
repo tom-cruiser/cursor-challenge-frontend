@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui";
-import { formatDistance, getUpcomingClinicDays } from "@/data/mockHospitals";
+import { formatDistance, getUpcomingClinicDays } from "@/lib/hospital-utils";
 import { cn } from "@/lib/cn";
 import { SERVICE_LABELS, type NearbyHospital } from "@/types/hospital";
 
@@ -63,8 +63,8 @@ export function HospitalCard({
             </CardDescription>
           </div>
           <div className="text-right">
-            <p className="flex items-center justify-end gap-1 text-sm font-semibold text-slate-100">
-              <Navigation className="h-3.5 w-3.5 text-accent-bright" aria-hidden="true" />
+            <p className="flex items-center justify-end gap-1 text-sm font-semibold text-health-text">
+              <Navigation className="h-3.5 w-3.5 text-teal" aria-hidden="true" />
               {formatDistance(hospital.distanceKm)}
             </p>
             <Badge priority={hospital.isOpen ? "core" : "medium"} className="mt-1">
@@ -76,7 +76,7 @@ export function HospitalCard({
 
       <CardContent className={cn("space-y-4", compact ? "pt-3" : "pt-0")}>
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-health-text-muted">
             Services
           </p>
           <div className="flex flex-wrap gap-2">
@@ -90,11 +90,11 @@ export function HospitalCard({
 
         {!compact && (
           <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-health-text-muted">
               Upcoming Immunization Clinics
             </p>
             {upcomingClinics.length === 0 ? (
-              <p className="text-sm text-slate-500">No upcoming clinic days scheduled.</p>
+              <p className="text-sm text-health-text-muted">No upcoming clinic days scheduled.</p>
             ) : (
               <ul className="space-y-2">
                 {upcomingClinics.slice(0, 3).map((clinic) => (
@@ -103,13 +103,13 @@ export function HospitalCard({
                     className="flex flex-col gap-1 rounded-lg bg-surface-muted/80 px-3 py-2 ring-1 ring-border-subtle sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div>
-                      <p className="text-sm font-medium text-slate-200">{clinic.label}</p>
-                      <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <p className="text-sm font-medium text-health-text">{clinic.label}</p>
+                      <p className="flex items-center gap-1.5 text-xs text-health-text-muted">
                         <Calendar className="h-3 w-3" aria-hidden="true" />
                         {formatClinicDate(clinic.date)}
                       </p>
                     </div>
-                    <p className="flex items-center gap-1.5 text-xs text-accent-bright">
+                    <p className="flex items-center gap-1.5 text-xs text-teal">
                       <Clock className="h-3 w-3" aria-hidden="true" />
                       {clinic.timeRange}
                     </p>
@@ -123,9 +123,9 @@ export function HospitalCard({
 
       <CardFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
         {preferredForLabel && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-health-text-muted">
             Setting preferred center for{" "}
-            <span className="font-medium text-slate-300">{preferredForLabel}</span>
+            <span className="font-medium text-health-text">{preferredForLabel}</span>
           </p>
         )}
         <Button

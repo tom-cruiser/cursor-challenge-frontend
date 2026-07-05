@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import {
@@ -8,13 +8,16 @@ import {
   HospitalViewToggle,
   type HospitalViewMode,
 } from "@/components/parent";
-import { Button, Card, Input } from "@/components/ui";
+import { Card, Input } from "@/components/ui";
 import {
-  filterHospitals,
-  mockNearbyHospitals,
+  filterNearbyHospitals,
   sortHospitalsByDistance,
-} from "@/data/mockHospitals";
+} from "@/lib/hospital-utils";
+import { mapNearbyHospital } from "@/lib/api/mappers";
+import * as parentApi from "@/lib/api/parent";
+import { config } from "@/lib/config";
 import { useParentContext } from "@/contexts";
+import type { NearbyHospital } from "@/types/hospital";
 
 export function HospitalMapsPage() {
   const navigate = useNavigate();
@@ -28,39 +31,65 @@ export function HospitalMapsPage() {
 
   const [viewMode, setViewMode] = useState<HospitalViewMode>("list");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedMapHospitalId, setSelectedMapHospitalId] = useState<string | null>(
-    mockNearbyHospitals[0]?.id ?? null,
-  );
+  const [hospitals, setHospitals] = useState<NearbyHospital[]>([]);
+  const [selectedMapHospitalId, setSelectedMapHospitalId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadHospitals = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const results = await parentApi.getNearbyHospitals(
+        config.defaultLocation.latitude,
+        config.defaultLocation.longitude,
+        { verifiedOnly: false, limit: 20 },
+      );
+      const mapped = results.map((hospital, index) => mapNearbyHospital(hospital, index));
+      setHospitals(mapped);
+      setSelectedMapHospitalId(mapped[0]?.id ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load hospitals.");
+      setHospitals([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadHospitals();
+  }, [loadHospitals]);
 
   const filteredHospitals = useMemo(
-    () => sortHospitalsByDistance(filterHospitals(mockNearbyHospitals, searchQuery)),
-    [searchQuery],
+    () => sortHospitalsByDistance(filterNearbyHospitals(hospitals, searchQuery)),
+    [hospitals, searchQuery],
   );
 
   const preferredHospitalId = activeChild?.preferredHospitalId ?? null;
 
-  function handleTogglePreferred(hospitalId: string) {
+  async function handleTogglePreferred(hospitalId: string) {
     if (!activeChildId) {
       return;
     }
-    setPreferredHospital(activeChildId, hospitalId);
+    await setPreferredHospital(activeChildId, hospitalId);
   }
 
   if (children.length === 0) {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
+          <h2 className="text-2xl font-semibold tracking-tight text-navy">
             Nearby Hospitals
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-health-text-muted">
             Find clinics and set a preferred vaccination center for your child.
           </p>
         </div>
         <EmptyState
           icon={MapPin}
           title="Add a child profile first"
-          description="Hospital lookup and preferred center selection become available after you register at least one child on the dashboard."
+          description="Create a child profile on your dashboard before selecting a preferred hospital."
           actionLabel="Go to Dashboard"
           onAction={() => navigate("/parent/dashboard")}
         />
@@ -70,92 +99,98 @@ export function HospitalMapsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
+          <h2 className="text-2xl font-semibold tracking-tight text-navy">
             Nearby Hospitals
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Find clinics, compare services, and set a preferred center for your child.
+          <p className="mt-1 text-sm text-health-text-muted">
+            Find clinics and set a preferred vaccination center for your child.
           </p>
         </div>
         <HospitalViewToggle viewMode={viewMode} onChange={setViewMode} />
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-        <div className="flex-1">
-          <Input
-            label="Search location"
-            placeholder="Search by hospital name or address"
-            hint="Using mock geolocation from Downtown Metro Area"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-        </div>
-      </div>
-
-      {children.length > 0 && (
-        <div
-          className="flex flex-wrap items-center gap-2"
-          role="tablist"
-          aria-label="Select child for preferred center"
-        >
-          <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
-            Preferred center for:
-          </span>
-          {children.map((child) => (
-            <Button
-              key={child.id}
-              variant={child.id === activeChildId ? "primary" : "secondary"}
-              size="sm"
-              onClick={() => setActiveChildId(child.id)}
-              role="tab"
-              aria-selected={child.id === activeChildId}
-            >
-              {child.name}
-            </Button>
-          ))}
-        </div>
+      {children.length > 1 && (
+        <Card className="p-4">
+          <label className="mb-2 block text-sm font-medium text-health-text">
+            Select child for preferred hospital
+          </label>
+          <select
+            value={activeChildId ?? ""}
+            onChange={(event) => setActiveChildId(event.target.value || null)}
+            className="w-full rounded-lg border border-border-subtle bg-surface-muted px-3 py-2 text-sm text-health-text"
+          >
+            {children.map((child) => (
+              <option key={child.id} value={child.id}>
+                {child.name}
+              </option>
+            ))}
+          </select>
+        </Card>
       )}
 
-      {viewMode === "map" ? (
-        <div className="space-y-4">
-          <HospitalMapView
-            hospitals={filteredHospitals}
-            preferredHospitalId={preferredHospitalId}
-            selectedHospitalId={selectedMapHospitalId}
-            onSelectHospital={setSelectedMapHospitalId}
-          />
+      <Input
+        label="Search hospitals"
+        value={searchQuery}
+        onChange={(event) => setSearchQuery(event.target.value)}
+        placeholder="Search by name or address..."
+        hint={`Showing hospitals near ${config.defaultLocation.label}`}
+      />
 
-          {selectedMapHospitalId && (
+      {error && (
+        <p className="text-sm text-danger-bright" role="alert">
+          {error}
+        </p>
+      )}
+
+      {isLoading ? (
+        <p className="text-sm text-health-text-muted">Loading nearby hospitals...</p>
+      ) : filteredHospitals.length === 0 ? (
+        <EmptyState
+          icon={MapPin}
+          title="No hospitals found"
+          description="Try widening your search or check back once hospitals register on the platform."
+        />
+      ) : viewMode === "list" ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {filteredHospitals.map((hospital) => (
             <HospitalCard
-              hospital={
-                filteredHospitals.find((h) => h.id === selectedMapHospitalId) ??
-                mockNearbyHospitals.find((h) => h.id === selectedMapHospitalId)!
-              }
-              isPreferred={preferredHospitalId === selectedMapHospitalId}
-              onTogglePreferred={() => handleTogglePreferred(selectedMapHospitalId)}
+              key={hospital.id}
+              hospital={hospital}
+              isPreferred={preferredHospitalId === hospital.id}
+              onTogglePreferred={() => void handleTogglePreferred(hospital.id)}
               preferredForLabel={activeChild?.name}
-              compact
             />
-          )}
+          ))}
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredHospitals.length === 0 ? (
-            <Card className="flex flex-col items-center justify-center p-12 text-center">
-              <p className="text-sm text-slate-500">No hospitals match your search.</p>
-            </Card>
-          ) : (
-            filteredHospitals.map((hospital) => (
-              <HospitalCard
-                key={hospital.id}
-                hospital={hospital}
-                isPreferred={preferredHospitalId === hospital.id}
-                onTogglePreferred={() => handleTogglePreferred(hospital.id)}
-                preferredForLabel={activeChild?.name}
-              />
-            ))
+          <HospitalMapView
+            hospitals={filteredHospitals}
+            selectedHospitalId={selectedMapHospitalId}
+            onSelectHospital={setSelectedMapHospitalId}
+            preferredHospitalId={preferredHospitalId}
+            locationLabel={config.defaultLocation.label}
+          />
+          {(filteredHospitals.find((h) => h.id === selectedMapHospitalId) ??
+            filteredHospitals[0]) && (
+            <HospitalCard
+              hospital={
+                filteredHospitals.find((h) => h.id === selectedMapHospitalId) ??
+                filteredHospitals[0]!
+              }
+              isPreferred={
+                preferredHospitalId ===
+                (selectedMapHospitalId ?? filteredHospitals[0]?.id)
+              }
+              onTogglePreferred={() =>
+                void handleTogglePreferred(
+                  selectedMapHospitalId ?? filteredHospitals[0]!.id,
+                )
+              }
+              preferredForLabel={activeChild?.name}
+            />
           )}
         </div>
       )}

@@ -5,6 +5,7 @@ import {
   ClipboardList,
   LayoutDashboard,
   MapPin,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 
@@ -24,6 +25,7 @@ export const parentNavItems: NavItem[] = [
 
 export const adminNavItems: NavItem[] = [
   { to: "/admin/dashboard", label: "Overview Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin/families", label: "Families & Children", icon: UsersRound },
   { to: "/admin/hospitals", label: "Hospital Directory", icon: Building2 },
   { to: "/admin/schedules", label: "Vaccine Schedules", icon: ClipboardList },
 ];

@@ -2,14 +2,14 @@ import { type HTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
 const priorityStyles = {
-  core: "bg-accent-glow text-accent-bright ring-1 ring-accent/30",
-  high: "bg-alert-glow text-alert-bright ring-1 ring-alert/30",
-  medium: "bg-info-glow text-info-bright ring-1 ring-info/30",
+  core: "bg-sage-glow text-sage-muted ring-1 ring-sage/30",
+  high: "bg-caution-glow text-caution ring-1 ring-caution/30",
+  medium: "bg-teal-glow text-teal-muted ring-1 ring-teal/30",
 } as const;
 
 const variantStyles = {
-  default: "bg-surface-overlay text-slate-400 ring-1 ring-border-subtle",
-  outline: "bg-transparent text-slate-400 ring-1 ring-border-strong",
+  default: "bg-health-muted text-health-text-muted ring-1 ring-health-muted",
+  outline: "bg-transparent text-health-text-muted ring-1 ring-health-muted",
 } as const;
 
 export type BadgePriority = keyof typeof priorityStyles;

@@ -11,7 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui";
-import { sexLabels } from "@/data/mockUsers";
+import { sexLabels } from "@/lib/child-labels";
 import {
   getCompletionProgress,
   getNextIncompleteMilestone,
@@ -26,6 +26,8 @@ export function DashboardPage() {
     activeChildId,
     setActiveChildId,
     setVaccinationCardImage,
+    isLoading,
+    error,
   } = useParentContext();
   const [showAddForm, setShowAddForm] = useState(false);
   const navigate = useNavigate();
@@ -34,10 +36,10 @@ export function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
+          <h2 className="text-2xl font-semibold tracking-tight text-navy">
             Child Profile Dashboard
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-health-text-muted">
             Manage profiles, upload vaccination card backups, and track progress.
           </p>
         </div>
@@ -56,7 +58,15 @@ export function DashboardPage() {
         />
       )}
 
-      {children.length === 0 ? (
+      {error && (
+        <p className="text-sm text-danger-bright" role="alert">
+          {error}
+        </p>
+      )}
+
+      {isLoading ? (
+        <p className="text-sm text-health-text-muted">Loading child profiles...</p>
+      ) : children.length === 0 ? (
         <EmptyState
           icon={UserRound}
           title="Welcome to VaxReminder"
@@ -101,7 +111,7 @@ export function DashboardPage() {
                   </CardHeader>
                   <CardContent className="space-y-4 pt-0">
                     <div>
-                      <div className="mb-2 flex justify-between text-xs text-slate-500">
+                      <div className="mb-2 flex justify-between text-xs text-health-text-muted">
                         <span>
                           {progress.completed}/{progress.total} milestones
                         </span>
@@ -115,15 +125,15 @@ export function DashboardPage() {
                       </div>
                     </div>
 
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-health-text-muted">
                       Next:{" "}
-                      <span className="font-medium text-slate-200">
+                      <span className="font-medium text-health-text">
                         {nextMilestone ? nextMilestone.label : "All milestones complete"}
                       </span>
                     </p>
 
                     {child.vaccinationCardImageUrl && (
-                      <p className="text-xs text-accent-bright">Vaccination card on file</p>
+                      <p className="text-xs text-teal">Vaccination card on file</p>
                     )}
 
                     <div className="flex flex-col gap-2 sm:flex-row">

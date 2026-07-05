@@ -5,10 +5,11 @@ const variantStyles = {
   primary:
     "bg-accent text-canvas shadow-glow-sm hover:bg-accent-bright active:bg-accent-muted",
   secondary:
-    "bg-surface-overlay text-slate-200 ring-1 ring-border-subtle hover:bg-surface-raised hover:ring-border-strong",
+    "bg-surface-overlay text-health-text ring-1 ring-border-subtle hover:bg-surface-raised hover:ring-border-strong",
   outline:
-    "bg-transparent text-slate-200 ring-1 ring-border-subtle hover:bg-surface-muted hover:ring-border-strong",
-  ghost: "bg-transparent text-slate-400 hover:bg-surface-overlay/50 hover:text-slate-200",
+    "bg-transparent text-health-text ring-1 ring-border-subtle hover:bg-surface-muted hover:ring-border-strong",
+  ghost:
+    "bg-transparent text-health-text-muted hover:bg-surface-overlay/50 hover:text-health-text",
   danger:
     "bg-danger-muted text-white hover:bg-danger active:bg-danger-muted ring-1 ring-danger/40",
 } as const;

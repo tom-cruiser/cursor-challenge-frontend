@@ -16,7 +16,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-sm font-medium text-slate-300"
+            className="block text-sm font-medium text-health-text"
           >
             {label}
           </label>
@@ -29,8 +29,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined
           }
           className={cn(
-            "flex h-10 w-full rounded-lg border bg-surface-muted px-3 py-2 text-sm text-slate-100",
-            "placeholder:text-slate-600",
+            "flex h-10 w-full rounded-lg border bg-surface-muted px-3 py-2 text-sm text-health-text",
+            "placeholder:text-health-text-muted/60",
             "ring-1 ring-border-subtle transition-all duration-150",
             "hover:ring-border-strong",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
@@ -40,7 +40,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           {...props}
         />
         {hint && !error && (
-          <p id={`${inputId}-hint`} className="text-xs text-slate-500">
+          <p id={`${inputId}-hint`} className="text-xs text-health-text-muted">
             {hint}
           </p>
         )}

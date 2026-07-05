@@ -6,17 +6,45 @@ import { useParentContext } from "@/contexts";
 
 export function TimelinePage() {
   const navigate = useNavigate();
-  const { activeChild, activeChildId, children, setActiveChildId, toggleMilestone } =
+  const { activeChild, activeChildId, children, setActiveChildId, toggleMilestone, isLoading, error } =
     useParentContext();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-navy">
+            Immunization Timeline
+          </h2>
+          <p className="mt-1 text-sm text-health-text-muted">Loading timeline...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-navy">
+            Immunization Timeline
+          </h2>
+          <p className="mt-1 text-sm text-danger-bright" role="alert">
+            {error}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (children.length === 0) {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
+          <h2 className="text-2xl font-semibold tracking-tight text-navy">
             Immunization Timeline
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-health-text-muted">
             Auto-generated schedules appear after you add a child profile.
           </p>
         </div>
@@ -35,10 +63,10 @@ export function TimelinePage() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
+          <h2 className="text-2xl font-semibold tracking-tight text-navy">
             Immunization Timeline
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-health-text-muted">
             Select a child profile to view their timeline.
           </p>
         </div>
@@ -67,17 +95,17 @@ export function TimelinePage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
+          <h2 className="text-2xl font-semibold tracking-tight text-navy">
             Immunization Timeline
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-health-text-muted">
             Track milestones and mark doses as completed.
           </p>
         </div>
         <button
           type="button"
           onClick={() => navigate("/parent/dashboard")}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-300"
+          className="inline-flex items-center gap-1.5 text-sm text-health-text-muted transition-colors hover:text-navy"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back to Dashboard

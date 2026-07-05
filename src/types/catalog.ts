@@ -25,6 +25,7 @@ export interface AdminHospitalFacility {
   name: string;
   address: string;
   region: string;
+  helpPhone: string;
   coordinates: FacilityCoordinates;
   verifiedTags: VerifiedTag[];
   services: HospitalService[];
@@ -57,14 +58,43 @@ export interface VaccineScheduleVersion {
   notes: string;
 }
 
+export interface DayHoursInput {
+  open: string | null;
+  close: string | null;
+  vaccination: boolean;
+}
+
+export const WEEKDAYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+
+export type Weekday = (typeof WEEKDAYS)[number];
+
+export const WEEKDAY_LABELS: Record<Weekday, string> = {
+  monday: "Monday",
+  tuesday: "Tuesday",
+  wednesday: "Wednesday",
+  thursday: "Thursday",
+  friday: "Friday",
+  saturday: "Saturday",
+  sunday: "Sunday",
+};
+
 export interface RegisterHospitalInput {
   name: string;
   address: string;
-  region: string;
   latitude: number;
   longitude: number;
-  verifiedTags: VerifiedTag[];
+  helpPhone: string;
+  country: string;
   services: HospitalService[];
+  operatingHours: Record<string, DayHoursInput>;
 }
 
 export interface CreateScheduleInput {

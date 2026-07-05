@@ -2,45 +2,99 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
 import {
-  getSession,
-  loginUser,
-  logoutUser,
-  registerUser,
-} from "@/data/authStore";
-import type { AuthUser, LoginInput, RegisterInput, UserRole } from "@/types/auth";
+  getDemoCredentials,
+  isUsingMockAuth,
+  login,
+  loginWithOtp,
+  logout,
+  register,
+  registerWithOtp,
+  restoreSession,
+  sendPhoneOtp,
+} from "@/services/auth.service";
+import type { AuthUser, LoginInput, PhoneLoginInput, RegisterInput, UserRole } from "@/types/auth";
 
 interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
+  useMockAuth: boolean;
   login: (input: LoginInput, role: UserRole) => Promise<AuthUser>;
+  loginWithPhone: (input: PhoneLoginInput, role: UserRole) => Promise<AuthUser>;
   register: (input: RegisterInput, role: UserRole) => Promise<AuthUser>;
+  registerWithPhone: (input: RegisterInput, role: UserRole, otp: string) => Promise<AuthUser>;
+  sendOtp: (phone: string) => Promise<void>;
   logout: () => void;
+  getDemoCredentials: typeof getDemoCredentials;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => getSession());
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
+  const useMockAuth = isUsingMockAuth();
 
-  const login = useCallback(async (input: LoginInput, role: UserRole) => {
-    const authUser = loginUser(input, role);
+  useEffect(() => {
+    let cancelled = false;
+
+    void restoreSession()
+      .then((session) => {
+        if (!cancelled) {
+          setUser(session);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to restore auth session:", err);
+        if (!cancelled) {
+          setUser(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setSessionReady(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [useMockAuth]);
+
+  const handleLogin = useCallback(async (input: LoginInput, role: UserRole) => {
+    const authUser = await login(input, role);
     setUser(authUser);
     return authUser;
   }, []);
 
-  const register = useCallback(async (input: RegisterInput, role: UserRole) => {
-    const authUser = registerUser(input, role);
+  const handleLoginWithPhone = useCallback(async (input: PhoneLoginInput, role: UserRole) => {
+    const authUser = await loginWithOtp(input.phone, input.otp, role);
     setUser(authUser);
     return authUser;
   }, []);
 
-  const logout = useCallback(() => {
-    logoutUser();
+  const handleRegister = useCallback(async (input: RegisterInput, role: UserRole) => {
+    const authUser = await register(input, role);
+    setUser(authUser);
+    return authUser;
+  }, []);
+
+  const handleRegisterWithPhone = useCallback(
+    async (input: RegisterInput, role: UserRole, otp: string) => {
+      const authUser = await registerWithOtp(input, role, otp);
+      setUser(authUser);
+      return authUser;
+    },
+    [],
+  );
+
+  const handleLogout = useCallback(() => {
+    logout();
     setUser(null);
   }, []);
 
@@ -48,14 +102,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       isAuthenticated: user !== null,
-      login,
-      register,
-      logout,
+      useMockAuth,
+      login: handleLogin,
+      loginWithPhone: handleLoginWithPhone,
+      register: handleRegister,
+      registerWithPhone: handleRegisterWithPhone,
+      sendOtp: sendPhoneOtp,
+      logout: handleLogout,
+      getDemoCredentials,
     }),
-    [user, login, register, logout],
+    [
+      user,
+      useMockAuth,
+      handleLogin,
+      handleLoginWithPhone,
+      handleRegister,
+      handleRegisterWithPhone,
+      handleLogout,
+    ],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{sessionReady ? children : null}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

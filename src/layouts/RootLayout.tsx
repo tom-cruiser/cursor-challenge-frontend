@@ -3,7 +3,7 @@ import { Syringe } from "lucide-react";
 
 export function RootLayout() {
   return (
-    <div className="layout-shell">
+    <div className="min-h-screen">
       <Outlet />
     </div>
   );

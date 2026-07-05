@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { GitBranchPlus, History, Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { History, Plus } from "lucide-react";
 import {
   DataTable,
   ScheduleRuleForm,
@@ -7,12 +7,14 @@ import {
 } from "@/components/admin";
 import { Badge, Button, Input } from "@/components/ui";
 import {
-  createScheduleVersion,
   filterScheduleVersions,
   formatAgeMonths,
-  mockScheduleVersions,
-  versionExistingSchedule,
-} from "@/data/mockAdminCatalogs";
+} from "@/lib/catalog-utils";
+import * as hospitalApi from "@/lib/api/hospital";
+import {
+  createScheduleInputToVaccinePayload,
+  mapVaccineToScheduleVersion,
+} from "@/lib/api/mappers";
 import type {
   CreateScheduleInput,
   VaccineScheduleVersion,
@@ -22,11 +24,32 @@ import type {
 type SlideOverMode = "create" | "version" | null;
 
 export function ScheduleRulesPage() {
-  const [versions, setVersions] = useState<VaccineScheduleVersion[]>(mockScheduleVersions);
+  const [versions, setVersions] = useState<VaccineScheduleVersion[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [slideOverMode, setSlideOverMode] = useState<SlideOverMode>(null);
-  const [versionTarget, setVersionTarget] = useState<VaccineScheduleVersion | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const loadVaccines = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const vaccines = await hospitalApi.listVaccines();
+      setVersions(vaccines.map(mapVaccineToScheduleVersion));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load vaccine catalog.");
+      setVersions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadVaccines();
+  }, [loadVaccines]);
 
   const filteredVersions = useMemo(
     () => filterScheduleVersions(versions, searchQuery),
@@ -34,40 +57,32 @@ export function ScheduleRulesPage() {
   );
 
   function openCreate() {
-    setVersionTarget(null);
     setSlideOverMode("create");
-  }
-
-  function openVersion(version: VaccineScheduleVersion) {
-    if (version.status !== "active") {
-      return;
-    }
-    setVersionTarget(version);
-    setSlideOverMode("version");
   }
 
   function closeSlideOver() {
     setSlideOverMode(null);
-    setVersionTarget(null);
   }
 
-  function handleCreate(input: CreateScheduleInput) {
-    setVersions((current) => createScheduleVersion(current, input));
-    closeSlideOver();
-    setSuccessMessage(`${input.vaccineName} added to catalog as v${new Date().getFullYear()}.1.`);
-  }
+  async function handleCreate(input: CreateScheduleInput) {
+    setIsSaving(true);
+    setError(null);
 
-  function handleVersion(input: VersionScheduleInput) {
-    const previous = versions.find(
-      (v) => v.catalogId === input.catalogId && v.status === "active",
-    );
-    setVersions((current) => versionExistingSchedule(current, input));
-    closeSlideOver();
-    if (previous) {
-      setSuccessMessage(
-        `${previous.vaccineName} v${previous.version} archived. New active version published.`,
-      );
+    try {
+      const payload = createScheduleInputToVaccinePayload(input);
+      const result = await hospitalApi.createVaccine(payload);
+      setVersions((current) => [...current, mapVaccineToScheduleVersion(result.vaccine)]);
+      setSuccessMessage(`${input.vaccineName} added to your hospital vaccine catalog.`);
+      closeSlideOver();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create vaccine rule.");
+    } finally {
+      setIsSaving(false);
     }
+  }
+
+  function handleVersion(_input: VersionScheduleInput) {
+    closeSlideOver();
   }
 
   const columns = [
@@ -76,8 +91,8 @@ export function ScheduleRulesPage() {
       header: "Vaccine",
       render: (version: VaccineScheduleVersion) => (
         <div>
-          <p className="font-medium text-slate-200">{version.vaccineName}</p>
-          <p className="text-xs text-slate-500">Catalog ID: {version.catalogId}</p>
+          <p className="font-medium text-health-text">{version.vaccineName}</p>
+          <p className="text-xs text-health-text-muted">Catalog ID: {version.catalogId}</p>
         </div>
       ),
     },
@@ -86,7 +101,7 @@ export function ScheduleRulesPage() {
       header: "Version",
       className: "whitespace-nowrap font-mono text-xs",
       render: (version: VaccineScheduleVersion) => (
-        <span className="text-slate-300">v{version.version}</span>
+        <span className="text-health-text">v{version.version}</span>
       ),
     },
     {
@@ -113,7 +128,7 @@ export function ScheduleRulesPage() {
       render: (version: VaccineScheduleVersion) => (
         <div className="space-y-1">
           {version.dosingRules.map((rule) => (
-            <p key={rule.doseNumber} className="text-xs text-slate-400">
+            <p key={rule.doseNumber} className="text-xs text-health-text-muted">
               {rule.label} · {formatAgeMonths(rule.ageMonths)}
             </p>
           ))}
@@ -125,7 +140,7 @@ export function ScheduleRulesPage() {
       header: "Check-up Ages",
       className: "whitespace-nowrap text-xs",
       render: (version: VaccineScheduleVersion) =>
-        version.checkUpAgeMonths.map(formatAgeMonths).join(", "),
+        version.checkUpAgeMonths.map(formatAgeMonths).join(", ") || "—",
     },
     {
       key: "effective",
@@ -139,12 +154,9 @@ export function ScheduleRulesPage() {
       className: "whitespace-nowrap",
       render: (version: VaccineScheduleVersion) =>
         version.status === "active" ? (
-          <Button variant="outline" size="sm" onClick={() => openVersion(version)}>
-            <GitBranchPlus className="h-4 w-4" aria-hidden="true" />
-            New Version
-          </Button>
+          <span className="text-xs text-health-text-muted">Live catalog</span>
         ) : (
-          <span className="flex items-center gap-1 text-xs text-slate-500">
+          <span className="flex items-center gap-1 text-xs text-health-text-muted">
             <History className="h-3.5 w-3.5" aria-hidden="true" />
             Historical
           </span>
@@ -159,11 +171,11 @@ export function ScheduleRulesPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
+          <h2 className="text-2xl font-semibold tracking-tight text-navy">
             Vaccine Schedule Catalog
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Manage master schedule versions. Versioning preserves historical records.
+          <p className="mt-1 text-sm text-health-text-muted">
+            Manage vaccines for your hospital. Schedules sync to registered children.
           </p>
         </div>
         <Button size="sm" onClick={openCreate}>
@@ -172,22 +184,28 @@ export function ScheduleRulesPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-4 text-sm text-slate-500">
+      <div className="flex flex-wrap gap-4 text-sm text-health-text-muted">
         <span>
-          <span className="font-semibold text-accent-bright">{activeCount}</span> active versions
+          <span className="font-semibold text-teal">{activeCount}</span> active versions
         </span>
         <span>
-          <span className="font-semibold text-slate-300">{archivedCount}</span> archived (historical)
+          <span className="font-semibold text-health-text">{archivedCount}</span> archived (historical)
         </span>
       </div>
 
       {successMessage && (
         <div
-          className="rounded-lg border border-accent/30 bg-accent-glow px-4 py-3 text-sm text-accent-bright"
+          className="rounded-lg border border-teal/30 bg-teal-glow px-4 py-3 text-sm text-teal-muted"
           role="status"
         >
           {successMessage}
         </div>
+      )}
+
+      {error && (
+        <p className="text-sm text-danger-bright" role="alert">
+          {error}
+        </p>
       )}
 
       <Input
@@ -198,38 +216,30 @@ export function ScheduleRulesPage() {
         aria-label="Search vaccine schedule catalog"
       />
 
-      <DataTable
-        columns={columns}
-        data={filteredVersions}
-        getRowId={(version) => version.id}
-        caption="Master vaccine schedule versions"
-        emptyMessage="No schedule versions match your search."
-      />
+      {isLoading ? (
+        <p className="text-sm text-health-text-muted">Loading vaccine catalog...</p>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={filteredVersions}
+          getRowId={(version) => version.id}
+          caption="Master vaccine schedule versions"
+          emptyMessage="No vaccine rules yet. Add your first rule to start building schedules."
+        />
+      )}
 
       <SlideOver
         open={slideOverMode !== null}
         onClose={closeSlideOver}
-        title={slideOverMode === "version" ? "Version Schedule" : "Add Vaccination Rule"}
-        description={
-          slideOverMode === "version"
-            ? "Publish a new version without disrupting historical records."
-            : "Append a new vaccine dosing rule to the master catalog."
-        }
+        title="Add Vaccination Rule"
+        description="Append a new vaccine dosing rule to your hospital catalog."
         width="lg"
       >
         {slideOverMode === "create" && (
           <ScheduleRuleForm
             mode="create"
-            onSubmitCreate={handleCreate}
-            onSubmitVersion={handleVersion}
-            onCancel={closeSlideOver}
-          />
-        )}
-        {slideOverMode === "version" && versionTarget && (
-          <ScheduleRuleForm
-            mode="version"
-            baseVersion={versionTarget}
-            onSubmitCreate={handleCreate}
+            isSubmitting={isSaving}
+            onSubmitCreate={(input) => void handleCreate(input)}
             onSubmitVersion={handleVersion}
             onCancel={closeSlideOver}
           />
