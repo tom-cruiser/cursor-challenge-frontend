@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Bell, LogOut, Syringe } from "lucide-react";
 import { BottomNav, SidebarNav } from "@/components/navigation";
 import { NotificationDrawer } from "@/components/parent";
@@ -11,6 +11,8 @@ import { cn } from "@/lib/cn";
 function ParentLayoutShell() {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAssistantRoute = location.pathname.startsWith("/parent/assistant");
   const {
     user,
     children,
@@ -112,7 +114,12 @@ function ParentLayoutShell() {
           </div>
         </header>
 
-        <div className="layout-content">
+        <div
+          className={cn(
+            "layout-content",
+            isAssistantRoute && "layout-content-assistant",
+          )}
+        >
           <Outlet />
         </div>
       </div>

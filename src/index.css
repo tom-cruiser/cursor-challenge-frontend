@@ -52,6 +52,10 @@
     @apply flex-1 overflow-y-auto p-6;
   }
 
+  .layout-content-assistant {
+    @apply flex min-h-0 flex-col overflow-hidden p-0;
+  }
+
   .nav-link {
     @apply flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-400 transition-all duration-150;
   }
@@ -129,6 +133,10 @@
 
   .parent-theme .layout-content {
     @apply bg-health-canvas;
+  }
+
+  .parent-theme .layout-content-assistant {
+    background-color: rgb(2 6 23);
   }
 
   .parent-theme .nav-link {
@@ -414,5 +422,36 @@
   .parent-theme .bg-transparent.text-slate-400,
   .parent-theme .bg-surface-muted.text-slate-400 {
     @apply text-health-text-muted;
+  }
+
+  /* AI assistant chat — dark premium palette isolated from parent light theme */
+  .parent-theme .assistant-chat {
+    background-color: rgb(2 6 23);
+    color: rgb(203 213 225);
+    color-scheme: dark;
+  }
+
+  .parent-theme .assistant-chat .text-slate-100 {
+    color: rgb(241 245 249);
+  }
+
+  .parent-theme .assistant-chat .text-slate-300 {
+    color: rgb(203 213 225);
+  }
+
+  .parent-theme .assistant-chat .text-slate-400 {
+    color: rgb(148 163 184);
+  }
+
+  .parent-theme .assistant-chat .text-slate-500 {
+    color: rgb(100 116 139);
+  }
+
+  .parent-theme .assistant-chat .placeholder\:text-slate-500::placeholder {
+    color: rgb(100 116 139);
+  }
+
+  .parent-theme .assistant-chat :focus-visible {
+    @apply ring-emerald-500/50 ring-offset-slate-950;
   }
 }

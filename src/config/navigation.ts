@@ -1,5 +1,6 @@
 import {
   Bell,
+  Bot,
   Building2,
   CalendarDays,
   ClipboardList,
@@ -21,6 +22,7 @@ export const parentNavItems: NavItem[] = [
   { to: "/parent/timeline", label: "Timeline", icon: CalendarDays },
   { to: "/parent/hospitals", label: "Nearby Hospitals", icon: MapPin },
   { to: "/parent/reminders", label: "Reminders", icon: Bell },
+  { to: "/parent/assistant", label: "Assistant", icon: Bot },
 ];
 
 export const adminNavItems: NavItem[] = [

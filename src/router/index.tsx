@@ -16,6 +16,7 @@ import {
   ScheduleRulesPage,
 } from "@/pages/admin";
 import {
+  AssistantPage,
   DashboardPage,
   HospitalMapsPage,
   RemindersPage,
@@ -81,6 +82,7 @@ export const router = createBrowserRouter([
           { path: "timeline", element: <TimelinePage /> },
           { path: "hospitals", element: <HospitalMapsPage /> },
           { path: "reminders", element: <RemindersPage /> },
+          { path: "assistant", element: <AssistantPage /> },
         ],
       },
       {
