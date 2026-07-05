@@ -16,7 +16,7 @@ import { SERVICE_LABELS, type NearbyHospital } from "@/types/hospital";
 interface HospitalCardProps {
   hospital: NearbyHospital;
   isPreferred: boolean;
-  onTogglePreferred: () => void;
+  onTogglePreferred?: () => void;
   preferredForLabel?: string;
   compact?: boolean;
 }
@@ -122,25 +122,27 @@ export function HospitalCard({
       </CardContent>
 
       <CardFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-        {preferredForLabel && (
+        {preferredForLabel && onTogglePreferred && (
           <p className="text-xs text-health-text-muted">
             Setting preferred center for{" "}
             <span className="font-medium text-health-text">{preferredForLabel}</span>
           </p>
         )}
-        <Button
-          variant={isPreferred ? "primary" : "outline"}
-          size="sm"
-          className="w-full sm:ml-auto sm:w-auto"
-          onClick={onTogglePreferred}
-          aria-pressed={isPreferred}
-        >
-          <Star
-            className={cn("h-4 w-4", isPreferred && "fill-current")}
-            aria-hidden="true"
-          />
-          {isPreferred ? "Preferred Center" : "Set as Preferred Center"}
-        </Button>
+        {onTogglePreferred && (
+          <Button
+            variant={isPreferred ? "primary" : "outline"}
+            size="sm"
+            className="w-full sm:ml-auto sm:w-auto"
+            onClick={onTogglePreferred}
+            aria-pressed={isPreferred}
+          >
+            <Star
+              className={cn("h-4 w-4", isPreferred && "fill-current")}
+              aria-hidden="true"
+            />
+            {isPreferred ? "Preferred Center" : "Set as Preferred Center"}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

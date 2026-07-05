@@ -78,7 +78,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       });
       setOverdueAlerts(overdue.map(mapOverdueToAlertLog));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load hospital dashboard.");
+      const message = err instanceof Error ? err.message : "Failed to load hospital dashboard.";
+      console.error("[AdminContext] refresh failed:", err);
+      setError(message);
       setMetrics(EMPTY_METRICS);
       setOverdueAlerts([]);
     } finally {

@@ -177,16 +177,32 @@ export async function registerWithOtp(
   return resolveAuthUser("admin");
 }
 
+async function syncMockSessionWithBackend(role: UserRole): Promise<AuthUser> {
+  const session = getSession();
+  if (!session) {
+    throw new Error("Login failed — no session was created.");
+  }
+
+  await ensureMockAccessToken(session);
+
+  try {
+    const authUser = await resolveAuthUser(role);
+    setSession(authUser);
+    return authUser;
+  } catch (error) {
+    logout();
+    throw error;
+  }
+}
+
 export async function login(input: LoginInput, role: UserRole): Promise<AuthUser> {
-  const authUser = mockLogin(input, role);
-  await ensureMockAccessToken(authUser);
-  return authUser;
+  mockLogin(input, role);
+  return syncMockSessionWithBackend(role);
 }
 
 export async function register(input: RegisterInput, role: UserRole): Promise<AuthUser> {
-  const authUser = mockRegister(input, role);
-  await ensureMockAccessToken(authUser);
-  return authUser;
+  mockRegister(input, role);
+  return syncMockSessionWithBackend(role);
 }
 
 export function logout(): void {
@@ -206,7 +222,15 @@ export async function restoreSession(): Promise<AuthUser | null> {
 
   if (config.useMockAuth) {
     await ensureMockAccessToken(session);
-    return session;
+
+    try {
+      const authUser = await resolveAuthUser(session.role);
+      setSession(authUser);
+      return authUser;
+    } catch (err) {
+      console.warn("Session restored locally but backend profile sync failed:", err);
+      return session;
+    }
   }
 
   if (isSupabaseAvailable()) {

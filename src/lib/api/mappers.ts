@@ -110,7 +110,7 @@ export function mapNearbyHospital(hospital: ApiNearbyHospital, index: number): N
     name: hospital.name,
     address: hospital.address ?? "Address not listed",
     distanceKm: hospital.distance_km,
-    services: (hospital.services.length ? hospital.services : ["vaccination"]) as NearbyHospital["services"],
+    services: ((hospital.services ?? []).length ? hospital.services : ["vaccination"]) as NearbyHospital["services"],
     clinicDays: buildClinicDays(hospital.operating_hours, hospital.vaccination_days),
     cluster: clusters[index % clusters.length]!,
     gridPosition: { row: (index % 4) + 1, col: (index % 5) + 1 },

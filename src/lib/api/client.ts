@@ -66,11 +66,9 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    throw new ApiError(
-      payload?.error ?? `Request failed (${response.status})`,
-      response.status,
-      payload?.details,
-    );
+    const message = payload?.error ?? `Request failed (${response.status})`;
+    console.error(`[API] ${options.method ?? "GET"} ${path} → ${response.status}: ${message}`);
+    throw new ApiError(message, response.status, payload?.details);
   }
 
   return (payload ?? {}) as T;

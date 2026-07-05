@@ -154,6 +154,8 @@ export function registerUser(input: RegisterInput, role: UserRole): AuthUser {
 
   if (role === "parent") {
     validateParentContacts(input);
+  } else if (!input.phone?.trim()) {
+    throw new Error("Phone number is required for hospital accounts.");
   }
 
   const reminderChannels: ReminderChannels | undefined =
@@ -177,7 +179,7 @@ export function registerUser(input: RegisterInput, role: UserRole): AuthUser {
     phone:
       role === "parent"
         ? input.phone?.trim()
-        : input.phone?.trim() || `+250788${String(Date.now()).slice(-6)}`,
+        : input.phone?.trim() || DEMO_ADMIN_PHONE,
     reminderChannels,
   };
 

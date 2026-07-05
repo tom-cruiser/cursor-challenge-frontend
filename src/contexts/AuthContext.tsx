@@ -23,6 +23,8 @@ import type { AuthUser, LoginInput, PhoneLoginInput, RegisterInput, UserRole } f
 interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
+  sessionReady: boolean;
+  sessionError: string | null;
   useMockAuth: boolean;
   login: (input: LoginInput, role: UserRole) => Promise<AuthUser>;
   loginWithPhone: (input: PhoneLoginInput, role: UserRole) => Promise<AuthUser>;
@@ -38,6 +40,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
   const useMockAuth = isUsingMockAuth();
 
   useEffect(() => {
@@ -47,12 +50,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((session) => {
         if (!cancelled) {
           setUser(session);
+          setSessionError(null);
         }
       })
       .catch((err) => {
         console.error("Failed to restore auth session:", err);
         if (!cancelled) {
           setUser(null);
+          setSessionError(
+            err instanceof Error ? err.message : "Failed to restore session.",
+          );
         }
       })
       .finally(() => {
@@ -102,6 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       isAuthenticated: user !== null,
+      sessionReady,
+      sessionError,
       useMockAuth,
       login: handleLogin,
       loginWithPhone: handleLoginWithPhone,
@@ -113,6 +122,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [
       user,
+      sessionReady,
+      sessionError,
       useMockAuth,
       handleLogin,
       handleLoginWithPhone,
@@ -122,7 +133,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <AuthContext.Provider value={value}>{sessionReady ? children : null}</AuthContext.Provider>;
+  if (!sessionReady) {
+    return (
+      <AuthContext.Provider value={value}>
+        <div className="flex min-h-screen items-center justify-center bg-health-canvas text-sm text-health-text-muted">
+          Restoring session…
+        </div>
+      </AuthContext.Provider>
+    );
+  }
+
+  return (
+    <AuthContext.Provider value={value}>
+      {sessionError && (
+        <div
+          className="border-b border-danger-bright/30 bg-danger-bright/10 px-4 py-2 text-center text-sm text-danger-bright"
+          role="alert"
+        >
+          {sessionError}
+        </div>
+      )}
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth(): AuthContextValue {

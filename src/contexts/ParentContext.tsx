@@ -84,7 +84,9 @@ export function ParentProvider({ children }: { children: ReactNode }) {
         return profiles[0]?.id ?? null;
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load children.");
+      const message = err instanceof Error ? err.message : "Failed to load children.";
+      console.error("[ParentContext] refreshChildren failed:", err);
+      setError(message);
       setChildProfiles([]);
     } finally {
       setIsLoading(false);

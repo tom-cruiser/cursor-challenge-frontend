@@ -18,8 +18,26 @@ export function isSupabaseConfigured(): boolean {
 const mockAuthRequested = import.meta.env.VITE_USE_MOCK_AUTH === "true";
 const supabaseConfigured = areSupabaseCredentialsValid(supabaseUrl, supabaseAnonKey);
 
+const backendUrl = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:3000";
+
+function deriveWebSocketUrl(backend: string): string {
+  const url = new URL(backend);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = "/ws/hospitals";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
+const wsUrl =
+  import.meta.env.VITE_WS_URL ??
+  import.meta.env.VITE_WS_HOSPITALS_URL ??
+  deriveWebSocketUrl(backendUrl);
+
 export const config = {
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? "/api/v1",
+  backendUrl,
+  wsUrl,
   supabaseUrl,
   supabaseAnonKey,
   /** HS256 secret for minting dev JWTs when useMockAuth is true (local only). */
@@ -36,4 +54,18 @@ export const config = {
 
 export function isApiConfigured(): boolean {
   return Boolean(config.apiBaseUrl);
+}
+
+/** WebSocket URL for live hospital create/update events from the backend. */
+export function getHospitalWebSocketUrl(): string {
+  if (config.wsUrl) {
+    return config.wsUrl;
+  }
+
+  if (import.meta.env.DEV) {
+    return deriveWebSocketUrl(config.backendUrl);
+  }
+
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}/ws/hospitals`;
 }

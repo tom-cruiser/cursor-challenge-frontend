@@ -9,18 +9,52 @@ import {
   type HospitalViewMode,
 } from "@/components/parent";
 import { Card, Input } from "@/components/ui";
+import { useHospitalWebSocket } from "@/hooks/useHospitalWebSocket";
 import {
   filterNearbyHospitals,
   sortHospitalsByDistance,
 } from "@/lib/hospital-utils";
 import { mapNearbyHospital } from "@/lib/api/mappers";
 import * as parentApi from "@/lib/api/parent";
-import { config } from "@/lib/config";
+import { config, isApiConfigured } from "@/lib/config";
 import { useParentContext } from "@/contexts";
 import type { NearbyHospital } from "@/types/hospital";
 
+interface SearchLocation {
+  latitude: number;
+  longitude: number;
+  label: string;
+}
+
+function useSearchLocation(): SearchLocation {
+  const [location, setLocation] = useState<SearchLocation>(config.defaultLocation);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          label: "your current location",
+        });
+      },
+      () => {
+        // Keep Kigali fallback when geolocation is denied or unavailable.
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
+    );
+  }, []);
+
+  return location;
+}
+
 export function HospitalMapsPage() {
   const navigate = useNavigate();
+  const searchLocation = useSearchLocation();
   const {
     children,
     activeChild,
@@ -42,8 +76,8 @@ export function HospitalMapsPage() {
 
     try {
       const results = await parentApi.getNearbyHospitals(
-        config.defaultLocation.latitude,
-        config.defaultLocation.longitude,
+        searchLocation.latitude,
+        searchLocation.longitude,
         { verifiedOnly: false, limit: 20 },
       );
       const mapped = results.map((hospital, index) => mapNearbyHospital(hospital, index));
@@ -55,11 +89,18 @@ export function HospitalMapsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [searchLocation.latitude, searchLocation.longitude]);
 
   useEffect(() => {
     void loadHospitals();
   }, [loadHospitals]);
+
+  useHospitalWebSocket({
+    enabled: isApiConfigured(),
+    onEvent: () => {
+      void loadHospitals();
+    },
+  });
 
   const filteredHospitals = useMemo(
     () => sortHospitalsByDistance(filterNearbyHospitals(hospitals, searchQuery)),
@@ -67,34 +108,13 @@ export function HospitalMapsPage() {
   );
 
   const preferredHospitalId = activeChild?.preferredHospitalId ?? null;
+  const canSetPreferred = children.length > 0 && Boolean(activeChildId);
 
   async function handleTogglePreferred(hospitalId: string) {
     if (!activeChildId) {
       return;
     }
     await setPreferredHospital(activeChildId, hospitalId);
-  }
-
-  if (children.length === 0) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-navy">
-            Nearby Hospitals
-          </h2>
-          <p className="mt-1 text-sm text-health-text-muted">
-            Find clinics and set a preferred vaccination center for your child.
-          </p>
-        </div>
-        <EmptyState
-          icon={MapPin}
-          title="Add a child profile first"
-          description="Create a child profile on your dashboard before selecting a preferred hospital."
-          actionLabel="Go to Dashboard"
-          onAction={() => navigate("/parent/dashboard")}
-        />
-      </div>
-    );
   }
 
   return (
@@ -110,6 +130,22 @@ export function HospitalMapsPage() {
         </div>
         <HospitalViewToggle viewMode={viewMode} onChange={setViewMode} />
       </div>
+
+      {children.length === 0 && (
+        <Card className="border-teal/20 bg-teal-glow/30 p-4">
+          <p className="text-sm text-health-text">
+            Add a child profile to set a preferred hospital. You can still browse nearby
+            clinics below.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate("/parent/dashboard")}
+            className="mt-2 text-sm font-medium text-teal hover:underline"
+          >
+            Go to Dashboard
+          </button>
+        </Card>
+      )}
 
       {children.length > 1 && (
         <Card className="p-4">
@@ -135,7 +171,7 @@ export function HospitalMapsPage() {
         value={searchQuery}
         onChange={(event) => setSearchQuery(event.target.value)}
         placeholder="Search by name or address..."
-        hint={`Showing hospitals near ${config.defaultLocation.label}`}
+        hint={`Showing hospitals near ${searchLocation.label}`}
       />
 
       {error && (
@@ -159,7 +195,9 @@ export function HospitalMapsPage() {
               key={hospital.id}
               hospital={hospital}
               isPreferred={preferredHospitalId === hospital.id}
-              onTogglePreferred={() => void handleTogglePreferred(hospital.id)}
+              onTogglePreferred={
+                canSetPreferred ? () => void handleTogglePreferred(hospital.id) : undefined
+              }
               preferredForLabel={activeChild?.name}
             />
           ))}
@@ -171,7 +209,7 @@ export function HospitalMapsPage() {
             selectedHospitalId={selectedMapHospitalId}
             onSelectHospital={setSelectedMapHospitalId}
             preferredHospitalId={preferredHospitalId}
-            locationLabel={config.defaultLocation.label}
+            locationLabel={searchLocation.label}
           />
           {(filteredHospitals.find((h) => h.id === selectedMapHospitalId) ??
             filteredHospitals[0]) && (
@@ -184,10 +222,13 @@ export function HospitalMapsPage() {
                 preferredHospitalId ===
                 (selectedMapHospitalId ?? filteredHospitals[0]?.id)
               }
-              onTogglePreferred={() =>
-                void handleTogglePreferred(
-                  selectedMapHospitalId ?? filteredHospitals[0]!.id,
-                )
+              onTogglePreferred={
+                canSetPreferred
+                  ? () =>
+                      void handleTogglePreferred(
+                        selectedMapHospitalId ?? filteredHospitals[0]!.id,
+                      )
+                  : undefined
               }
               preferredForLabel={activeChild?.name}
             />
