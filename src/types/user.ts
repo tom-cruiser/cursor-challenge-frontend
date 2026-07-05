@@ -20,7 +20,9 @@ export interface AdminUser {
 
 export type ChildSex = "male" | "female" | "other";
 
-export type MilestoneStatus = "completed" | "due_soon" | "upcoming";
+export type ScheduleStatus = "pending" | "due_soon" | "completed" | "overdue";
+
+export type MilestoneStatus = "completed" | "due_soon" | "upcoming" | "overdue";
 
 export interface ImmunizationMilestone {
   id: string;
@@ -29,6 +31,8 @@ export interface ImmunizationMilestone {
   dueDate: string;
   completed: boolean;
   completedAt?: string;
+  /** Backend schedule status from GET /user/children/:id/timeline */
+  scheduleStatus?: ScheduleStatus;
 }
 
 export interface ChildProfile {

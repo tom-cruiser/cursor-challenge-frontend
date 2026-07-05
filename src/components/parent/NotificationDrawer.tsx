@@ -32,7 +32,8 @@ function NotificationCard({
   isRead: boolean;
   onMarkRead: () => void;
 }) {
-  const isUrgent = notification.daysUntilDue === 1;
+  const isUrgent = notification.daysUntilDue <= 1;
+  const isOverdue = notification.daysUntilDue < 0;
 
   return (
     <div
@@ -61,8 +62,12 @@ function NotificationCard({
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium text-health-text">{notification.message}</p>
             {!isRead && (
-              <Badge priority={isUrgent ? "high" : "medium"}>
-                {isUrgent ? "1-day warning" : "3-day warning"}
+              <Badge priority={isOverdue || isUrgent ? "high" : "medium"}>
+                {isOverdue
+                  ? "Overdue"
+                  : isUrgent
+                    ? "1-day warning"
+                    : `${notification.leadTimeDays}-day warning`}
               </Badge>
             )}
           </div>
@@ -146,7 +151,7 @@ export function NotificationDrawer({
               Notifications
             </h2>
             <p className="mt-0.5 text-sm text-health-text-muted">
-              In-app lead-time warnings · no SMS required
+              In-app alerts · push requires browser permission
             </p>
           </div>
           <Button type="button" variant="ghost" size="sm" onClick={onClose} aria-label="Close">

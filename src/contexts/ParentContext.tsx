@@ -8,13 +8,18 @@ import {
   type ReactNode,
 } from "react";
 import { generateLeadTimeNotifications } from "@/data/notificationEngine";
-import { countDueSoonMilestones } from "@/data/timelineEngine";
+import {
+  buildRemindersFromChildren,
+  countActionableReminders,
+} from "@/data/reminderEngine";
 import { mapChildWithTimeline } from "@/lib/api/mappers";
 import * as parentApi from "@/lib/api/parent";
 import { isApiConfigured } from "@/lib/config";
+import { registerPushNotifications } from "@/services/pushNotifications.service";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AddChildInput, ChildProfile, ParentUser } from "@/types/user";
 import type { AppNotification, LeadTimeDays } from "@/types/notification";
+import type { VaccinationReminder } from "@/data/reminderEngine";
 import { DEFAULT_REMINDER_CHANNELS } from "@/types/auth";
 
 interface ParentContextValue {
@@ -24,6 +29,7 @@ interface ParentContextValue {
   activeChildId: string | null;
   activeChild: ChildProfile | null;
   notifications: AppNotification[];
+  reminders: VaccinationReminder[];
   unreadNotificationCount: number;
   notificationLeadTime: LeadTimeDays;
   isLoading: boolean;
@@ -96,6 +102,16 @@ export function ParentProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refreshChildren();
   }, [refreshChildren, authUser?.id]);
+
+  useEffect(() => {
+    if (!canLoadData || authUser?.role !== "parent") {
+      return;
+    }
+
+    void registerPushNotifications().catch(() => {
+      // Errors are logged inside registerPushNotifications; never block the app.
+    });
+  }, [canLoadData, authUser?.id, authUser?.role]);
 
   const addChild = useCallback(
     async (input: AddChildInput) => {
@@ -179,6 +195,11 @@ export function ParentProvider({ children }: { children: ReactNode }) {
     [childProfiles, notificationLeadTime],
   );
 
+  const reminders = useMemo(
+    () => buildRemindersFromChildren(childProfiles, notificationLeadTime),
+    [childProfiles, notificationLeadTime],
+  );
+
   const unreadNotificationCount = useMemo(
     () => notifications.filter((n) => !readNotificationIds.has(n.id)).length,
     [notifications, readNotificationIds],
@@ -187,10 +208,10 @@ export function ParentProvider({ children }: { children: ReactNode }) {
   const unreadReminders = useMemo(
     () =>
       childProfiles.reduce(
-        (total, child) => total + countDueSoonMilestones(child.milestones),
+        (total, child) => total + countActionableReminders(child.milestones, notificationLeadTime),
         0,
       ),
-    [childProfiles],
+    [childProfiles, notificationLeadTime],
   );
 
   const markNotificationRead = useCallback((id: string) => {
@@ -218,6 +239,7 @@ export function ParentProvider({ children }: { children: ReactNode }) {
       activeChildId,
       activeChild,
       notifications,
+      reminders,
       unreadNotificationCount,
       notificationLeadTime,
       isLoading,
@@ -240,6 +262,7 @@ export function ParentProvider({ children }: { children: ReactNode }) {
       activeChildId,
       activeChild,
       notifications,
+      reminders,
       unreadNotificationCount,
       notificationLeadTime,
       isLoading,

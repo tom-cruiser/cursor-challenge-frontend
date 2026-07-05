@@ -32,6 +32,14 @@ const statusConfig: Record<
     iconClass: "bg-teal text-white ring-teal/40",
     badgePriority: "core" as const,
   },
+  overdue: {
+    label: "Overdue",
+    sectionClass: "border-alert/25 bg-alert-glow/40",
+    cardClass: "border-alert/30 bg-alert-glow/30",
+    icon: AlertTriangle,
+    iconClass: "bg-alert text-white ring-alert/40",
+    badgePriority: "high" as const,
+  },
   due_soon: {
     label: "Due Soon",
     sectionClass: "border-caution/25 bg-caution-glow/60",
@@ -50,7 +58,7 @@ const statusConfig: Record<
   },
 };
 
-const statusOrder: MilestoneStatus[] = ["due_soon", "upcoming", "completed"];
+const statusOrder: MilestoneStatus[] = ["overdue", "due_soon", "upcoming", "completed"];
 
 function formatDueDate(dateString: string): string {
   return new Date(`${dateString}T00:00:00`).toLocaleDateString("en-US", {
@@ -63,6 +71,7 @@ function formatDueDate(dateString: string): string {
 function groupMilestonesByStatus(milestones: ImmunizationMilestone[]) {
   const groups: Record<MilestoneStatus, ImmunizationMilestone[]> = {
     completed: [],
+    overdue: [],
     due_soon: [],
     upcoming: [],
   };

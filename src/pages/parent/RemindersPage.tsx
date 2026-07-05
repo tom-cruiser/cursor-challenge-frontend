@@ -1,15 +1,23 @@
-import { Bell, Calendar, Syringe } from "lucide-react";
+import { Bell, Calendar, MapPin, Syringe } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { EmptyState } from "@/components/parent";
 import { Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui";
-import { getMilestoneStatus } from "@/data/timelineEngine";
+import { childNeedsPreferredHospital } from "@/data/reminderEngine";
 import { useParentContext } from "@/contexts";
-import type { ImmunizationMilestone, MilestoneStatus } from "@/types/user";
+import type { MilestoneStatus } from "@/types/user";
 
 const statusPriority: Record<MilestoneStatus, "core" | "high" | "medium"> = {
   completed: "core",
+  overdue: "high",
   due_soon: "high",
   upcoming: "medium",
+};
+
+const statusLabels: Record<MilestoneStatus, string> = {
+  completed: "Completed",
+  overdue: "Overdue",
+  due_soon: "Due Soon",
+  upcoming: "Upcoming",
 };
 
 function formatDueDate(dateString: string): string {
@@ -20,27 +28,19 @@ function formatDueDate(dateString: string): string {
   });
 }
 
-function buildReminders(
-  childName: string,
-  milestones: ImmunizationMilestone[],
-): Array<ImmunizationMilestone & { childName: string; status: MilestoneStatus }> {
-  return milestones
-    .filter((milestone) => !milestone.completed)
-    .map((milestone) => ({
-      ...milestone,
-      childName,
-      status: getMilestoneStatus(milestone),
-    }))
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-}
-
 export function RemindersPage() {
   const navigate = useNavigate();
-  const { children, unreadReminders, toggleMilestone, isLoading, error } = useParentContext();
+  const {
+    children,
+    reminders,
+    unreadReminders,
+    notificationLeadTime,
+    toggleMilestone,
+    isLoading,
+    error,
+  } = useParentContext();
 
-  const reminders = children.flatMap((child) =>
-    buildReminders(child.name, child.milestones),
-  );
+  const childrenAwaitingHospital = children.filter(childNeedsPreferredHospital);
 
   return (
     <div className="space-y-6">
@@ -50,11 +50,11 @@ export function RemindersPage() {
             Reminders
           </h2>
           <p className="mt-1 text-sm text-health-text-muted">
-            Upcoming and overdue vaccination notifications.
+            Overdue, due soon, and upcoming doses within your {notificationLeadTime}-day alert window.
           </p>
         </div>
         {unreadReminders > 0 && (
-          <Badge priority="high">{unreadReminders} due soon</Badge>
+          <Badge priority="high">{unreadReminders} active</Badge>
         )}
       </div>
 
@@ -74,11 +74,23 @@ export function RemindersPage() {
           actionLabel="Go to Dashboard"
           onAction={() => navigate("/parent/dashboard")}
         />
+      ) : childrenAwaitingHospital.length > 0 && reminders.length === 0 ? (
+        <EmptyState
+          icon={MapPin}
+          title="Choose a preferred hospital"
+          description={
+            childrenAwaitingHospital.length === 1
+              ? `${childrenAwaitingHospital[0]!.name} has no immunization schedule yet. Select a nearby hospital to generate vaccine reminders from that facility's schedule.`
+              : `${childrenAwaitingHospital.length} children have no immunization schedule yet. Select a preferred hospital on the Nearby Hospitals page to generate reminders.`
+          }
+          actionLabel="Find Hospitals"
+          onAction={() => navigate("/parent/hospitals")}
+        />
       ) : reminders.length === 0 ? (
         <EmptyState
           icon={Bell}
           title="All caught up"
-          description="No pending vaccination reminders. Check the notification drawer for lead-time alerts."
+          description={`No doses are overdue, due soon, or due within ${notificationLeadTime} day${notificationLeadTime > 1 ? "s" : ""}. Adjust the lead-time setting in the notification drawer for earlier alerts.`}
         />
       ) : (
         <div className="space-y-3">
@@ -96,7 +108,7 @@ export function RemindersPage() {
                     </div>
                   </div>
                   <Badge priority={statusPriority[reminder.status]}>
-                    {reminder.status === "due_soon" ? "Due Soon" : "Upcoming"}
+                    {statusLabels[reminder.status]}
                   </Badge>
                 </div>
               </CardHeader>
@@ -105,6 +117,12 @@ export function RemindersPage() {
                   <span className="flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
                     Due {formatDueDate(reminder.dueDate)}
+                    {reminder.daysUntilDue < 0 && (
+                      <span className="text-alert-bright">
+                        ({Math.abs(reminder.daysUntilDue)} day
+                        {Math.abs(reminder.daysUntilDue) === 1 ? "" : "s"} overdue)
+                      </span>
+                    )}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Syringe className="h-3.5 w-3.5" aria-hidden="true" />
@@ -114,14 +132,7 @@ export function RemindersPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    const child = children.find((c) =>
-                      c.milestones.some((m) => m.id === reminder.id),
-                    );
-                    if (child) {
-                      toggleMilestone(child.id, reminder.id);
-                    }
-                  }}
+                  onClick={() => toggleMilestone(reminder.childId, reminder.id)}
                 >
                   Mark complete
                 </Button>

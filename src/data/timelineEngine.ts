@@ -1,4 +1,11 @@
-import type { ChildProfile, ImmunizationMilestone, MilestoneStatus } from "@/types/user";
+import type { ChildProfile, ImmunizationMilestone } from "@/types/user";
+import { getMilestoneStatus } from "@/data/reminderEngine";
+
+export {
+  countActionableReminders as countDueSoonMilestones,
+  getDaysUntilDue,
+  getMilestoneStatus,
+} from "@/data/reminderEngine";
 
 export interface MilestoneTemplate {
   label: string;
@@ -34,8 +41,6 @@ export const MANDATORY_MILESTONES: MilestoneTemplate[] = [
   },
 ];
 
-const DUE_SOON_WINDOW_DAYS = 30;
-
 function addMonths(date: Date, months: number): Date {
   const result = new Date(date);
   result.setMonth(result.getMonth() + months);
@@ -65,25 +70,6 @@ export function generateMilestones(
   });
 }
 
-export function getMilestoneStatus(
-  milestone: ImmunizationMilestone,
-  referenceDate: Date = new Date(),
-): MilestoneStatus {
-  if (milestone.completed) {
-    return "completed";
-  }
-
-  const dueDate = new Date(`${milestone.dueDate}T00:00:00`);
-  const diffMs = dueDate.getTime() - referenceDate.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays <= DUE_SOON_WINDOW_DAYS) {
-    return "due_soon";
-  }
-
-  return "upcoming";
-}
-
 export function getNextIncompleteMilestone(
   milestones: ImmunizationMilestone[],
   referenceDate: Date = new Date(),
@@ -93,18 +79,11 @@ export function getNextIncompleteMilestone(
   );
 
   return (
-    sorted.find((milestone) => !milestone.completed && getMilestoneStatus(milestone, referenceDate) !== "completed") ??
-    null
+    sorted.find(
+      (milestone) =>
+        !milestone.completed && getMilestoneStatus(milestone, referenceDate) !== "completed",
+    ) ?? null
   );
-}
-
-export function countDueSoonMilestones(
-  milestones: ImmunizationMilestone[],
-  referenceDate: Date = new Date(),
-): number {
-  return milestones.filter(
-    (milestone) => getMilestoneStatus(milestone, referenceDate) === "due_soon",
-  ).length;
 }
 
 export function getCompletionProgress(milestones: ImmunizationMilestone[]): {

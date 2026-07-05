@@ -55,6 +55,7 @@ export function mapScheduleToMilestone(item: ApiChildSchedule): ImmunizationMile
     dueDate: item.due_date,
     completed: item.status === "completed",
     completedAt: item.completed_at?.split("T")[0],
+    scheduleStatus: item.status,
   };
 }
 

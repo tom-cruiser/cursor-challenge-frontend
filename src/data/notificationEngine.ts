@@ -1,55 +1,45 @@
 import type { AppNotification, LeadTimeDays } from "@/types/notification";
 import type { ChildProfile } from "@/types/user";
-
-function getDaysUntilDue(dueDate: string, referenceDate: Date = new Date()): number {
-  const due = new Date(`${dueDate}T00:00:00`);
-  const ref = new Date(referenceDate);
-  ref.setHours(0, 0, 0, 0);
-  const diffMs = due.getTime() - ref.getTime();
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-}
+import {
+  buildRemindersFromChildren,
+  getDaysUntilDue,
+  isActionableReminder,
+} from "@/data/reminderEngine";
 
 export function generateLeadTimeNotifications(
   children: ChildProfile[],
   leadTimeDays: LeadTimeDays,
   referenceDate: Date = new Date(),
 ): AppNotification[] {
-  const notifications: AppNotification[] = [];
+  const reminders = buildRemindersFromChildren(children, leadTimeDays, referenceDate);
 
-  for (const child of children) {
-    for (const milestone of child.milestones) {
-      if (milestone.completed) {
-        continue;
-      }
+  return reminders.map((reminder) => {
+    const daysUntilDue = getDaysUntilDue(reminder.dueDate, referenceDate);
+    const isOverdue = daysUntilDue < 0;
 
-      const daysUntilDue = getDaysUntilDue(milestone.dueDate, referenceDate);
-
-      if (daysUntilDue <= 0) {
-        continue;
-      }
-
-      if (daysUntilDue > leadTimeDays) {
-        continue;
-      }
-
-      notifications.push({
-        id: `notif-${child.id}-${milestone.id}-${leadTimeDays}d`,
-        childId: child.id,
-        childName: child.name,
-        milestoneId: milestone.id,
-        doseLabel: milestone.label,
-        dueDate: milestone.dueDate,
-        daysUntilDue,
-        leadTimeDays,
-        message:
-          daysUntilDue === 1
-            ? `${child.name} has ${milestone.label} due tomorrow`
-            : `${child.name} has ${milestone.label} due in ${daysUntilDue} days`,
-      });
+    let message: string;
+    if (isOverdue) {
+      message = `${reminder.childName} has ${reminder.label} overdue by ${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) === 1 ? "" : "s"}`;
+    } else if (daysUntilDue === 0) {
+      message = `${reminder.childName} has ${reminder.label} due today`;
+    } else if (daysUntilDue === 1) {
+      message = `${reminder.childName} has ${reminder.label} due tomorrow`;
+    } else {
+      message = `${reminder.childName} has ${reminder.label} due in ${daysUntilDue} days`;
     }
-  }
 
-  return notifications.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+    return {
+      id: `notif-${reminder.childId}-${reminder.id}-${leadTimeDays}d`,
+      childId: reminder.childId,
+      childName: reminder.childName,
+      milestoneId: reminder.id,
+      doseLabel: reminder.label,
+      dueDate: reminder.dueDate,
+      daysUntilDue,
+      leadTimeDays,
+      message,
+    };
+  });
 }
 
 export function formatDueDate(dateString: string): string {
@@ -88,3 +78,5 @@ export function applyDemoNotificationDueDates(child: ChildProfile): ChildProfile
     }),
   };
 }
+
+export { isActionableReminder };

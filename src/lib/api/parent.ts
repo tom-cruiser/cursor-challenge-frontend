@@ -92,3 +92,10 @@ export async function registerToHospital(hospitalId: string): Promise<void> {
     method: "POST",
   });
 }
+
+export async function registerFcmToken(token: string): Promise<void> {
+  await apiRequest("/user/fcm-token", {
+    method: "POST",
+    body: { token },
+  });
+}
